@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/database";
-
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
-) {
+) 
+
+{
   try {
     const { id } = await context.params;
     const { enabled } = await request.json();
@@ -28,7 +29,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
     console.error("Feature toggle PATCH error:", error);

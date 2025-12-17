@@ -1,15 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '../../../../../../lib/database';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { enabled } = await request.json();
+    const { id } = await context.params;
+    const body = await request.json();
+    const { enabled } = body;
+
+    if (typeof enabled !== 'boolean') {
+      return NextResponse.json(
+        { success: false, error: 'Invalid enabled value' },
+        { status: 400 }
+      );
+    }
+
     const result = await pool.query(
-      'UPDATE feature_toggles SET enabled = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [enabled, params.id]
+      `
+      UPDATE feature_toggles
+      SET enabled = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+      `,
+      [enabled, id]
     );
-    return NextResponse.json(result.rows[0]);
+
+    return NextResponse.json({
+      success: true,
+      data: result.rows[0],
+    });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to toggle feature' }, { status: 500 });
+    console.error('Feature toggle PATCH error:', error);
+
+    return NextResponse.json(
+      { success: false, error: 'Failed to toggle feature' },
+      { status: 500 }
+    );
   }
 }
+
