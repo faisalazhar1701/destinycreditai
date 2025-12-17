@@ -1,28 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-// GET request handler
+// GET request
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params; // type-safe fix
   // aapka existing GET logic yahan rahega
-  return NextResponse.json({ message: `Feature toggle ${params.id}` });
+  return NextResponse.json({ message: `Feature toggle ${id}` });
 }
 
-// PATCH request handler
+// PATCH request
 export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   // aapka existing PATCH logic yahan rahega
   return NextResponse.json({ success: true });
 }
 
-// DELETE request handler
+// DELETE request
 export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   // aapka existing DELETE logic yahan rahega
   return NextResponse.json({ success: true });
 }
