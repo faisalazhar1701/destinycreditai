@@ -1266,25 +1266,26 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
             </div>
             
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh]">
-              <div className="space-y-6">
-                {getWorkflowContent(selectedWorkflow, workflows)?.steps?.map((step, index) => (
-                  <div key={index} className="bg-light-gray p-4 sm:p-6 rounded-lg border border-gray-200">
-                    <div className="flex items-start">
-                      <div className="w-8 h-8 bg-primary-green rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                        <span className="text-pure-white font-bold text-sm">{index + 1}</span>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-primary-black mb-3">{step.title}</h4>
-                        <p className="text-gray-600 text-sm" style={{lineHeight: '1.7'}}>
-                          {step.content}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+  <div className="space-y-6">
+    {getWorkflowContent(selectedWorkflow, workflows)?.steps?.map(
+      (step: any, index: number) => (
+        <div
+          key={index}
+          className="bg-light-gray p-4 sm:p-6 rounded-lg border border-gray-200"
+        >
+          <div className="flex items-start">
+            <div className="w-8 h-8 bg-primary-green rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+              <span className="text-white font-bold">{index + 1}</span>
             </div>
-            
+
+            {/* your existing content that uses `step` */}
+          </div>
+        </div>
+      )
+    )}
+  </div>
+</div>
+
             <div className="p-4 sm:p-6 border-t border-border-gray bg-light-gray">
               <div className="flex flex-col space-y-4">
                 <div className="flex justify-center">
