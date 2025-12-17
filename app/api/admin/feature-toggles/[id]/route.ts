@@ -1,42 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import pool from "@/lib/database";
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // ✅ NEW: params must be awaited
     const { id } = await context.params;
+    const { enabled } = await request.json();
 
-    const body = await request.json();
-
-    if (typeof body.enabled !== "boolean") {
+    if (typeof enabled !== "boolean") {
       return NextResponse.json(
-        { success: false, error: "Invalid 'enabled' value" },
+        { success: false, error: "Invalid enabled value" },
         { status: 400 }
       );
     }
 
-    const updatedToggle = await prisma.featureToggle.update({
-      where: { id },
-      data: {
-        enabled: body.enabled
-      }
-    });
+    const result = await pool.query(
+      `
+      UPDATE feature_toggles
+      SET enabled = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+      `,
+      [enabled, id]
+    );
 
     return NextResponse.json({
       success: true,
-      data: updatedToggle
+      data: result.rows[0]
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Feature toggle PATCH error:", error);
 
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message ?? "Failed to update feature toggle"
-      },
+      { success: false, error: "Failed to toggle feature" },
       { status: 500 }
     );
   }
