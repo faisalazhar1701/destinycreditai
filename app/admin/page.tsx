@@ -69,6 +69,8 @@ interface ResourceLink {
   id: string;
   title: string;
   url: string;
+  type?: string;
+  description?: string;
   visible: boolean;
 }
 
@@ -179,20 +181,20 @@ export default function AdminPanel() {
   const deleteRecord = async (id: string, type: string, itemName?: string) => {
     const userInput = prompt(`⚠️ DELETE CONFIRMATION\\n\\nType 'DELETE' to confirm deletion of ${itemName || 'this item'}:`);
     if (userInput !== 'DELETE') return;
-    
+
     setLoading(true);
     try {
-      const endpoint = type === 'users' ? `/api/admin/users/${id}` : 
-                     type === 'letters' ? `/api/credit-letters/${id}` :
-                     type === 'followups' ? `/api/followup-letters/${id}` :
-                     type === 'workflows' ? `/api/workflows/${id}` :
-                     type === 'uploads' ? `/api/admin/uploads/${id}` :
-                     `/api/admin/${type}/${id}`;
-      
+      const endpoint = type === 'users' ? `/api/admin/users/${id}` :
+        type === 'letters' ? `/api/credit-letters/${id}` :
+          type === 'followups' ? `/api/followup-letters/${id}` :
+            type === 'workflows' ? `/api/workflows/${id}` :
+              type === 'uploads' ? `/api/admin/uploads/${id}` :
+                `/api/admin/${type}/${id}`;
+
 
       const response = await fetch(endpoint, { method: 'DELETE' });
       const responseData = await response.json();
-      
+
       if (response.ok) {
         const success = responseData.success !== false;
         if (success) {
@@ -216,13 +218,13 @@ export default function AdminPanel() {
     try {
       const endpoint = type === 'users' ? `/api/users/${id}` : `/api/admin/${type}/${id}`;
       const body = type === 'users' ? { active: !currentStatus } : { [field]: !currentStatus };
-      
+
       const response = await fetch(endpoint, {
         method: type === 'users' ? 'PUT' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-      
+
       if (response.ok) {
         const responseData = await response.json();
         const success = responseData.success !== false;
@@ -273,26 +275,26 @@ export default function AdminPanel() {
       }
 
       const method = data.id ? 'PUT' : 'POST';
-      const endpoint = type === 'users' ? 
+      const endpoint = type === 'users' ?
         (data.id ? `/api/admin/users/${data.id}` : '/api/admin/users') :
         type === 'workflows' ?
-        (data.id ? `/api/workflows/${data.id}` : '/api/workflows') :
-        type === 'letters' ?
-        (data.id ? `/api/credit-letters/${data.id}` : '/api/credit-letters') :
-        type === 'followups' ?
-        (data.id ? `/api/followup-letters/${data.id}` : '/api/followup-letters') :
-        (data.id ? `/api/admin/${type}/${data.id}` : `/api/admin/${type}`);
-      
+          (data.id ? `/api/workflows/${data.id}` : '/api/workflows') :
+          type === 'letters' ?
+            (data.id ? `/api/credit-letters/${data.id}` : '/api/credit-letters') :
+            type === 'followups' ?
+              (data.id ? `/api/followup-letters/${data.id}` : '/api/followup-letters') :
+              (data.id ? `/api/admin/${type}/${data.id}` : `/api/admin/${type}`);
 
-      
+
+
       const response = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      
+
       const responseData = await response.json();
-      
+
       if (response.ok && responseData.success === true) {
         setEditingItem(null);
         await fetchData();
@@ -317,6 +319,7 @@ export default function AdminPanel() {
     { id: 'disclaimers', name: '⚖️ Disclaimers' },
     { id: 'resources', name: '🔗 Resource Links' },
     { id: 'uploads', name: '📁 Uploaded Files' },
+    { id: 'activity', name: '📈 System Activity' },
   ];
 
   return (
@@ -332,13 +335,28 @@ export default function AdminPanel() {
               priority
             />
           </div>
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-white font-bold text-sm">A</span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="w-32"></div> {/* Spacer */}
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center mr-3">
+                <span className="text-white font-bold text-sm">A</span>
+              </div>
+              <h1 className="text-4xl font-bold text-black tracking-tight">
+                Admin Control Panel
+              </h1>
             </div>
-            <h1 className="text-4xl font-bold text-black tracking-tight">
-              Admin Control Panel
-            </h1>
+            <div className="w-32 flex justify-end">
+              <button
+                onClick={async () => {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  window.location.href = '/login';
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                style={{ color: 'white' }}
+              >
+                Logout
+              </button>
+            </div>
           </div>
           <p className="text-gray-600 text-center">
             Complete platform administration and control
@@ -353,13 +371,13 @@ export default function AdminPanel() {
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
-                className={`px-6 py-3 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
-                  activeSection === section.id
-                    ? 'bg-green-600 text-white shadow-lg scale-105'
-                    : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md'
-                }`}
+                className={`px-6 py-3 rounded-lg font-bold text-sm whitespace-nowrap transition-all border-none ${activeSection === section.id
+                  ? 'bg-green-700 text-white shadow-lg scale-105'
+                  : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-md'
+                  }`}
+                style={{ color: 'white', fontWeight: 'bold' }}
               >
-                <span className="text-white">{section.name}</span>
+                <span className="text-white" style={{ color: 'white' }}>{section.name}</span>
               </button>
             ))}
           </nav>
@@ -427,16 +445,14 @@ export default function AdminPanel() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
                               {user.role}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              user.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
                               {user.active ? 'Active' : 'Inactive'}
                             </span>
                           </td>
@@ -447,21 +463,20 @@ export default function AdminPanel() {
                             {new Date(user.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button 
+                            <button
                               onClick={() => toggleStatus(user.id, 'users', user.active, 'active')}
-                              className={`mr-2 px-2 py-1 text-xs rounded ${
-                                user.active ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                              }`}
+                              className={`mr-2 px-2 py-1 text-xs rounded ${user.active ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                }`}
                             >
                               {user.active ? 'Deactivate' : 'Activate'}
                             </button>
-                            <button 
+                            <button
                               onClick={() => setEditingItem({ type: 'users', data: user })}
                               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded mr-4"
                             >
                               <span className="text-white">Edit</span>
                             </button>
-                            <button 
+                            <button
                               onClick={() => deleteRecord(user.id, 'users', user.email)}
                               className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                             >
@@ -502,7 +517,13 @@ export default function AdminPanel() {
                             {new Date(letter.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button 
+                            <button
+                              onClick={() => setEditingItem({ type: 'letters', data: letter })}
+                              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded mr-2"
+                            >
+                              <span className="text-white">Edit</span>
+                            </button>
+                            <button
                               onClick={() => deleteRecord(letter.id, 'letters', `${letter.creditorName} letter`)}
                               className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                             >
@@ -543,7 +564,13 @@ export default function AdminPanel() {
                             {new Date(followUp.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button 
+                            <button
+                              onClick={() => setEditingItem({ type: 'followups', data: followUp })}
+                              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded mr-2"
+                            >
+                              <span className="text-white">Edit</span>
+                            </button>
+                            <button
                               onClick={() => deleteRecord(followUp.id, 'followups', `Day ${followUp.day} follow-up`)}
                               className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                             >
@@ -565,30 +592,28 @@ export default function AdminPanel() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{workflow.name}</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            workflow.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${workflow.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                             {workflow.enabled ? 'Enabled' : 'Disabled'}
                           </span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => toggleStatus(workflow.id, 'workflows', workflow.enabled)}
-                            className={`px-3 py-1 rounded text-sm font-medium ${
-                              workflow.enabled 
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                : 'admin-green-btn text-white'
-                            }`}
+                            className={`px-3 py-1 rounded text-sm font-medium ${workflow.enabled
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'admin-green-btn text-white'
+                              }`}
                           >
                             <span className={workflow.enabled ? '' : 'text-white'}>{workflow.enabled ? 'Disable' : 'Enable'}</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => setEditingItem({ type: 'workflows', data: workflow })}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
                           >
                             <span className="text-white">Edit</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => deleteRecord(workflow.id, 'workflows', workflow.name)}
                             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                           >
@@ -613,30 +638,28 @@ export default function AdminPanel() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 capitalize">{prompt.type} Prompt</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            prompt.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${prompt.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                             {prompt.enabled ? 'Enabled' : 'Disabled'}
                           </span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => toggleStatus(prompt.id, 'ai-prompts', prompt.enabled)}
-                            className={`px-3 py-1 rounded text-sm font-medium ${
-                              prompt.enabled 
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                : 'admin-green-btn text-white'
-                            }`}
+                            className={`px-3 py-1 rounded text-sm font-medium ${prompt.enabled
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'admin-green-btn text-white'
+                              }`}
                           >
                             <span className={prompt.enabled ? '' : 'text-white'}>{prompt.enabled ? 'Disable' : 'Enable'}</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => setEditingItem({ type: 'ai-prompts', data: prompt })}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
                           >
                             <span className="text-white">Edit</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => deleteRecord(prompt.id, 'ai-prompts', `${prompt.type} prompt`)}
                             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                           >
@@ -660,30 +683,28 @@ export default function AdminPanel() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 capitalize">{template.category} Template</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            template.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${template.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                             {template.enabled ? 'Enabled' : 'Disabled'}
                           </span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => toggleStatus(template.id, 'letter-templates', template.enabled)}
-                            className={`px-3 py-1 rounded text-sm font-medium ${
-                              template.enabled 
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                : 'admin-green-btn text-white'
-                            }`}
+                            className={`px-3 py-1 rounded text-sm font-medium ${template.enabled
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'admin-green-btn text-white'
+                              }`}
                           >
                             <span className={template.enabled ? '' : 'text-white'}>{template.enabled ? 'Disable' : 'Enable'}</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => setEditingItem({ type: 'letter-templates', data: template })}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
                           >
                             <span className="text-white">Edit</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => deleteRecord(template.id, 'letter-templates', `${template.category} template`)}
                             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                           >
@@ -712,30 +733,28 @@ export default function AdminPanel() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900 capitalize">{disclaimer.type} Disclaimer</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            disclaimer.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${disclaimer.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                             {disclaimer.enabled ? 'Enabled' : 'Disabled'}
                           </span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => toggleStatus(disclaimer.id, 'disclaimers', disclaimer.enabled)}
-                            className={`px-3 py-1 rounded text-sm font-medium ${
-                              disclaimer.enabled 
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                : 'admin-green-btn text-white'
-                            }`}
+                            className={`px-3 py-1 rounded text-sm font-medium ${disclaimer.enabled
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'admin-green-btn text-white'
+                              }`}
                           >
                             <span className={disclaimer.enabled ? '' : 'text-white'}>{disclaimer.enabled ? 'Disable' : 'Enable'}</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => setEditingItem({ type: 'disclaimers', data: disclaimer })}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
                           >
                             <span className="text-white">Edit</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => deleteRecord(disclaimer.id, 'disclaimers', `${disclaimer.type} disclaimer`)}
                             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                           >
@@ -759,30 +778,33 @@ export default function AdminPanel() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{resource.title}</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            resource.visible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {resource.visible ? 'Visible' : 'Hidden'}
-                          </span>
+                          <div className="flex gap-2 items-center mt-1">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${resource.visible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                              {resource.visible ? 'Visible' : 'Hidden'}
+                            </span>
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                              {resource.type}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => toggleStatus(resource.id, 'resources', resource.visible, 'visible')}
-                            className={`px-3 py-1 rounded text-sm font-medium ${
-                              resource.visible 
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200' 
-                                : 'admin-green-btn text-white'
-                            }`}
+                            className={`px-3 py-1 rounded text-sm font-medium ${resource.visible
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'admin-green-btn text-white'
+                              }`}
                           >
                             <span className={resource.visible ? '' : 'text-white'}>{resource.visible ? 'Hide' : 'Show'}</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => setEditingItem({ type: 'resources', data: resource })}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
                           >
                             <span className="text-white">Edit</span>
                           </button>
-                          <button 
+                          <button
                             onClick={() => deleteRecord(resource.id, 'resources', resource.title)}
                             className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                           >
@@ -791,12 +813,64 @@ export default function AdminPanel() {
                         </div>
                       </div>
                       <div className="bg-gray-50 p-4 rounded">
-                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm">
+                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm break-all">
                           {resource.url}
                         </a>
+                        {resource.description && (
+                          <p className="text-sm text-gray-500 mt-2">{resource.description}</p>
+                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {activeSection === 'activity' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <h4 className="text-blue-800 font-semibold mb-1">Total Users</h4>
+                      <p className="text-2xl font-bold text-blue-900">{users.length}</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <h4 className="text-green-800 font-semibold mb-1">Letters Generated</h4>
+                      <p className="text-2xl font-bold text-green-900">{letters.length}</p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                      <h4 className="text-purple-800 font-semibold mb-1">Follow-ups</h4>
+                      <p className="text-2xl font-bold text-purple-900">{followUps.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                      <h3 className="font-semibold text-gray-900">Recent System Activity</h3>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {[...users, ...letters, ...followUps]
+                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .slice(0, 10)
+                        .map((item, idx) => (
+                          <div key={idx} className="px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center">
+                              <div className={`w-2 h-2 rounded-full mr-4 ${'email' in item ? 'bg-blue-500' : 'day' in item ? 'bg-purple-500' : 'bg-green-500'
+                                }`}></div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {'email' in item ? `New user registered: ${item.email}` :
+                                    'day' in item ? `Follow-up letter generated (Day ${item.day})` :
+                                      `Credit letter generated for ${item.bureau}`}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(item.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-xs font-medium text-gray-400">SUCCESS</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -829,7 +903,7 @@ export default function AdminPanel() {
                             {new Date(upload.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button 
+                            <button
                               onClick={() => deleteRecord(upload.id, 'uploads', upload.filename)}
                               className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
                             >
@@ -848,12 +922,12 @@ export default function AdminPanel() {
 
         {/* Edit Modal */}
         {editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
             <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-96 overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4 text-black">
                 {editingItem.data.id ? 'Edit' : 'Add'} {editingItem.type.replace('-', ' ')}
               </h3>
-              <EditForm 
+              <EditForm
                 type={editingItem.type}
                 data={editingItem.data}
                 onSave={saveRecord}
@@ -869,10 +943,10 @@ export default function AdminPanel() {
 
 function EditForm({ type, data, onSave, onCancel }: any) {
   const [formData, setFormData] = useState(data);
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (type === 'workflows' && formData.steps) {
       if (typeof formData.steps === 'string') {
         try {
@@ -883,10 +957,10 @@ function EditForm({ type, data, onSave, onCancel }: any) {
         }
       }
     }
-    
+
     onSave(type, formData);
   };
-  
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {type === 'users' && (
@@ -895,20 +969,20 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Name"
             value={formData.name || ''}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full p-2 border rounded"
           />
           <input
             type="email"
             placeholder="Email"
             value={formData.email || ''}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className="w-full p-2 border rounded"
             required
           />
           <select
             value={formData.role || 'USER'}
-            onChange={(e) => setFormData({...formData, role: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             className="w-full p-2 border rounded"
           >
             <option value="USER">User</option>
@@ -916,12 +990,12 @@ function EditForm({ type, data, onSave, onCancel }: any) {
           </select>
         </>
       )}
-      
+
       {type === 'ai-prompts' && (
         <>
           <select
             value={formData.type || 'system'}
-            onChange={(e) => setFormData({...formData, type: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             className="w-full p-2 border rounded"
             required
           >
@@ -933,7 +1007,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
           <textarea
             placeholder="Prompt content"
             value={formData.content || ''}
-            onChange={(e) => setFormData({...formData, content: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             className="w-full p-2 border rounded h-32"
             required
           />
@@ -946,21 +1020,21 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Category"
             value={formData.category || ''}
-            onChange={(e) => setFormData({...formData, category: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             className="w-full p-2 border rounded"
             required
           />
           <textarea
             placeholder="Content"
             value={formData.content || ''}
-            onChange={(e) => setFormData({...formData, content: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             className="w-full p-2 border rounded h-32"
             required
           />
           <textarea
             placeholder="Disclaimer"
             value={formData.disclaimer || ''}
-            onChange={(e) => setFormData({...formData, disclaimer: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, disclaimer: e.target.value })}
             className="w-full p-2 border rounded h-20"
           />
         </>
@@ -970,7 +1044,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
         <>
           <select
             value={formData.type || 'onboarding'}
-            onChange={(e) => setFormData({...formData, type: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             className="w-full p-2 border rounded"
             required
           >
@@ -981,7 +1055,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
           <textarea
             placeholder="Content"
             value={formData.content || ''}
-            onChange={(e) => setFormData({...formData, content: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             className="w-full p-2 border rounded h-32"
             required
           />
@@ -994,7 +1068,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Title"
             value={formData.title || ''}
-            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full p-2 border rounded"
             required
           />
@@ -1002,9 +1076,24 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="url"
             placeholder="URL"
             value={formData.url || ''}
-            onChange={(e) => setFormData({...formData, url: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
             className="w-full p-2 border rounded"
             required
+          />
+          <select
+            value={formData.type || 'EXTERNAL'}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            className="w-full p-2 border rounded"
+          >
+            <option value="EXTERNAL">External Link</option>
+            <option value="VIDEO">Video</option>
+            <option value="COMMUNITY">Community</option>
+          </select>
+          <textarea
+            placeholder="Description"
+            value={formData.description || ''}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="w-full p-2 border rounded h-20"
           />
         </>
       )}
@@ -1015,15 +1104,15 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Workflow Name"
             value={formData.name || ''}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full p-2 border rounded"
             required
           />
           <textarea
             placeholder="Steps (JSON format: {&quot;steps&quot;: [&quot;Step 1&quot;, &quot;Step 2&quot;]})"
-            value={typeof formData.steps === 'string' ? formData.steps : JSON.stringify(formData.steps || {steps: []}, null, 2)}
+            value={typeof formData.steps === 'string' ? formData.steps : JSON.stringify(formData.steps || { steps: [] }, null, 2)}
             onChange={(e) => {
-              setFormData({...formData, steps: e.target.value});
+              setFormData({ ...formData, steps: e.target.value });
             }}
             className="w-full p-2 border rounded h-32"
             required
@@ -1035,7 +1124,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
         <>
           <select
             value={formData.bureau || 'Experian'}
-            onChange={(e) => setFormData({...formData, bureau: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, bureau: e.target.value })}
             className="w-full p-2 border rounded"
             required
           >
@@ -1048,13 +1137,13 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Creditor Name *"
             value={formData.creditorName || ''}
-            onChange={(e) => setFormData({...formData, creditorName: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, creditorName: e.target.value })}
             className="w-full p-2 border rounded"
             required
           />
           <select
             value={formData.letterType || 'dispute'}
-            onChange={(e) => setFormData({...formData, letterType: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, letterType: e.target.value })}
             className="w-full p-2 border rounded"
             required
           >
@@ -1067,13 +1156,13 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Account Number"
             value={formData.accountNumber || ''}
-            onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
             className="w-full p-2 border rounded"
           />
           <textarea
             placeholder="Content *"
             value={formData.content || ''}
-            onChange={(e) => setFormData({...formData, content: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             className="w-full p-2 border rounded h-32"
             required
           />
@@ -1084,7 +1173,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
         <>
           <select
             value={formData.day || 15}
-            onChange={(e) => setFormData({...formData, day: parseInt(e.target.value)})}
+            onChange={(e) => setFormData({ ...formData, day: parseInt(e.target.value) })}
             className="w-full p-2 border rounded"
             required
           >
@@ -1096,13 +1185,13 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             type="text"
             placeholder="Title"
             value={formData.title || ''}
-            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full p-2 border rounded"
           />
           <textarea
             placeholder="Content"
             value={formData.content || ''}
-            onChange={(e) => setFormData({...formData, content: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
             className="w-full p-2 border rounded h-32"
             required
           />
@@ -1134,7 +1223,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
           </select>
         </>
       )}
-      
+
       <div className="flex gap-2">
         <button type="submit" className="admin-green-btn px-4 py-2 rounded text-white">
           <span className="text-white">Save</span>

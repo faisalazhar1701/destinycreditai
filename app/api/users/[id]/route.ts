@@ -1,16 +1,20 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: { id: string } } // Changed params type to be directly available
+) {
   try {
-    const params = await context.params;
+    const { id } = context.params; // Access id directly from context.params
     const { name, email, role, active } = await request.json();
     const user = await prisma.user.update({
-      where: { id: params.id },
-      data: { 
-        name, 
-        email, 
-        role: role?.toUpperCase(), 
+      where: { id: id }, // Use the directly accessed id
+      data: {
+        name,
+        email,
+        role: role?.toUpperCase(),
         active,
         lastLogin: active ? new Date() : undefined
       }

@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
@@ -122,17 +123,56 @@ async function main() {
     }
   }
 
-  // Create default user
-  const existingUser = await prisma.user.findUnique({ where: { email: 'demo@example.com' } });
+  // Create Resources
+  const resources = [
+    { title: 'Join Our Community', url: 'https://www.skool.com/shakehandswithdestiny/about', type: 'COMMUNITY', description: 'Join our Skool community for support', visible: true },
+    { title: 'How to remove collection in 24–72 hours', url: 'https://youtu.be/0DYVSIBWfvU', type: 'VIDEO', description: 'Video guide for collection removal', visible: true },
+    { title: 'Cash for Delete', url: 'https://youtu.be/1OarOSL5nAQ', type: 'VIDEO', description: 'Understanding Pay for Delete', visible: true },
+    { title: 'Late Payment Dispute', url: 'https://www.loom.com/share/45a4fc64d8f549e0b54e96619191f164', type: 'VIDEO', description: 'Guide for disputing late payments', visible: true },
+    { title: 'CFPB Complaint for Late Payments', url: 'https://www.loom.com/share/e99f7b9bd55649d9839112dcace2c764', type: 'VIDEO', description: 'Filing a CFPB complaint for late payments', visible: true },
+    { title: 'CFPB Complaint for Charge-Off', url: 'https://youtu.be/2N-XQwp95ak', type: 'VIDEO', description: 'Filing a CFPB complaint for charge-offs', visible: true },
+    { title: 'Remove Charge-Offs with 1099-C', url: 'https://youtu.be/qfjVsOIF9SQ', type: 'VIDEO', description: 'Strategy for 1099C charge-off removal', visible: true },
+    { title: 'Bankruptcy Masterclass', url: 'https://youtu.be/rwoZw-PNH2s', type: 'VIDEO', description: 'Educational masterclass on bankruptcy', visible: true },
+    { title: 'CFPB Complaint for Bankruptcy', url: 'https://youtu.be/TzphCW5lOaY', type: 'VIDEO', description: 'Filing a complaint regarding bankruptcy', visible: true },
+    { title: 'MyScoreIQ', url: 'https://member.myscoreiq.com/get-fico-preferred.aspx?offercode=432130N3&kuid=cd46f59d-e9e8-4020-bcb2-8f6068647ec1&kref=https%3A%2F%2Fwww.shakehandswithdestiny.org%2Fdigital-course%2Fsubcategory%2F16', type: 'EXTERNAL', description: 'Credit monitoring service', visible: true },
+    { title: 'Better Business Bureau (BBB)', url: 'https://www.bbb.org', type: 'EXTERNAL', description: 'File a complaint with the BBB', visible: true }
+  ];
+
+  for (const resource of resources) {
+    const existing = await prisma.resourceLink.findFirst({ where: { title: resource.title } });
+    if (!existing) {
+      await prisma.resourceLink.create({ data: resource });
+    } else {
+      // Update URL if it changed
+      await prisma.resourceLink.update({
+        where: { id: existing.id },
+        data: { url: resource.url }
+      });
+    }
+  }
+
+  // Create or Update default user
+  const existingUser = await prisma.user.findUnique({ where: { email: 'admin@destinycredit.com' } });
+  const hashedPassword = await bcrypt.hash('password123', 10);
+
   if (!existingUser) {
     await prisma.user.create({
       data: {
-        name: 'Demo User',
-        email: 'demo@example.com',
-        role: 'USER',
-        active: true
+        name: 'Admin User',
+        email: 'admin@destinycredit.com',
+        role: 'ADMIN',
+        active: true,
+        password: hashedPassword
       }
     });
+    console.log('Created admin user: admin@destinycredit.com / password123');
+  } else {
+    // Update password for existing user to ensure it works
+    await prisma.user.update({
+      where: { email: 'admin@destinycredit.com' },
+      data: { password: hashedPassword, role: 'ADMIN' }
+    });
+    console.log('Updated admin user password to: password123');
   }
 
   console.log('Database seeded successfully!');

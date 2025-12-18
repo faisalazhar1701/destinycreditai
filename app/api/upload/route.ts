@@ -1,73 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
 import { prisma } from '@/lib/prisma';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/auth';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.formData();
-    const file: File | null = data.get('file') as unknown as File;
-    const type: string = data.get('type') as string;
+    // Authenticate user
+    const token = (await cookies()).get('auth_token')?.value;
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const payload = verifyToken(token);
+    if (!payload?.userId) {
+      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
+    }
+    const userId = payload.userId;
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const fileType = formData.get('fileType') as string || 'document';
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'];
+    // Validate file type (allow images and PDFs)
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid file type. Only PDF and Images allowed' }, { status: 400 });
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large (max 5MB)' }, { status: 400 });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_'); // Sanitize filename
+    const uniqueFilename = `${Date.now()}_${filename}`;
+
+    // Ensure upload directory exists
+    const uploadDir = path.join(process.cwd(), 'public/uploads');
+    try {
+      await mkdir(uploadDir, { recursive: true });
+    } catch (e) {
+      // Ignore error if it exists
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Create filename with timestamp
-    const timestamp = Date.now();
-    const extension = file.name.split('.').pop();
-    const filename = `${type}_${timestamp}.${extension}`;
-    
-    // Save to public/uploads directory
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    const filepath = join(uploadDir, filename);
-    
+    const filepath = path.join(uploadDir, uniqueFilename);
     await writeFile(filepath, buffer);
-    
-    const url = `/uploads/${filename}`;
-    
-    // Save to database (create demo user if needed)
-    let user = await prisma.user.findFirst({ where: { email: 'demo@example.com' } });
-    if (!user) {
-      user = await prisma.user.create({
-        data: { email: 'demo@example.com', role: 'USER' }
-      });
-    }
-    
-    const uploadedFile = await prisma.uploadedFile.create({
+
+    // Public URL path
+    const publicPath = `/uploads/${uniqueFilename}`;
+
+    const upload = await prisma.uploadedFile.create({
       data: {
-        filename,
-        filepath: url,
-        fileType: file.type,
-        uploadedBy: user.id
+        filename: filename, // Store original name (sanitized)
+        filepath: publicPath,
+        fileType: fileType,
+        uploadedBy: userId
       }
     });
-    
-    return NextResponse.json({ 
-      success: true, 
-      url,
-      filename,
-      size: file.size,
-      type: file.type,
-      id: uploadedFile.id
-    });
+
+    return NextResponse.json({ success: true, data: upload });
 
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = (await cookies()).get('auth_token')?.value;
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const payload = verifyToken(token);
+    if (!payload?.userId) {
+      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
+    }
+
+    const uploads = await prisma.uploadedFile.findMany({
+      where: { uploadedBy: payload.userId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return NextResponse.json({ success: true, data: uploads });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
   }
 }
