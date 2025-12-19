@@ -21,11 +21,16 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { name, email, role = 'USER' } = await request.json();
-    
+
     const user = await prisma.user.create({
-      data: { name, email, role: role.toUpperCase() as 'USER' | 'ADMIN' }
+      data: {
+        name,
+        email,
+        role: role.toUpperCase() as 'USER' | 'ADMIN',
+        password: 'password123' // Default password required by schema
+      }
     });
-    
+
     return NextResponse.json({ success: true, data: user });
   } catch (error) {
     console.error('Error creating user:', error);

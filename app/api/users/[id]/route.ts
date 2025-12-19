@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } } // Changed params type to be directly available
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = context.params; // Access id directly from context.params
+    const { id } = await context.params;
     const { name, email, role, active } = await request.json();
     const user = await prisma.user.update({
       where: { id: id }, // Use the directly accessed id

@@ -1,11 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/database';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const result = await pool.query('SELECT * FROM feature_toggles ORDER BY feature_name');
-    return NextResponse.json(result.rows);
+    const toggles = await prisma.featureToggle.findMany({
+      orderBy: { feature_name: 'asc' },
+    });
+
+    return NextResponse.json(toggles);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch feature toggles' }, { status: 500 });
+    console.error('Feature toggles GET error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch feature toggles' },
+      { status: 500 }
+    );
   }
 }

@@ -2,12 +2,16 @@
   "name": "destinycreditai",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:init": "mysql -u root -p < database/init.sql"
+    "db:init": "mysql -u root -p < database/init.sql",
+    "prisma:generate": "prisma generate"
   },
   "prisma": {
     "seed": "node ./prisma/seed.js"

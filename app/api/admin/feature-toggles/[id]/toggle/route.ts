@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 
 export async function PATCH(
   request: NextRequest,
@@ -17,19 +17,17 @@ export async function PATCH(
       );
     }
 
-    const result = await pool.query(
-      `
-      UPDATE feature_toggles
-      SET enabled = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-      `,
-      [enabled, id]
-    );
+    const updatedToggle = await prisma.featureToggle.update({
+      where: { id },
+      data: {
+        enabled,
+        updated_at: new Date()
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      data: result.rows[0],
+      data: updatedToggle,
     });
   } catch (error) {
     console.error('Feature toggle PATCH error:', error);

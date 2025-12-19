@@ -101,3 +101,14 @@ enum Role {
   ADMIN
   USER
 }
+
+model FeatureToggle {
+  id           String   @id @default(uuid())
+  feature_name String   @unique
+  enabled      Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@map("feature_toggles")
+}
+
