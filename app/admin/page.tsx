@@ -50,13 +50,7 @@ interface AIPrompt {
   enabled: boolean;
 }
 
-interface LetterTemplate {
-  id: string;
-  category: string;
-  content: string;
-  disclaimer?: string;
-  enabled: boolean;
-}
+
 
 interface Disclaimer {
   id: string;
@@ -90,7 +84,7 @@ export default function AdminPanel() {
   const [followUps, setFollowUps] = useState<FollowUpLetter[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [aiPrompts, setAiPrompts] = useState<AIPrompt[]>([]);
-  const [templates, setTemplates] = useState<LetterTemplate[]>([]);
+
   const [disclaimers, setDisclaimers] = useState<Disclaimer[]>([]);
   const [resources, setResources] = useState<ResourceLink[]>([]);
   const [uploads, setUploads] = useState<UploadedFile[]>([]);
@@ -142,13 +136,7 @@ export default function AdminPanel() {
             setAiPrompts(result.success ? result.data : result);
           }
           break;
-        case 'templates':
-          const templatesRes = await fetch('/api/admin/letter-templates');
-          if (templatesRes.ok) {
-            const result = await templatesRes.json();
-            setTemplates(result.success ? result.data : result);
-          }
-          break;
+
         case 'disclaimers':
           const disclaimersRes = await fetch('/api/admin/disclaimers');
           if (disclaimersRes.ok) {
@@ -160,7 +148,22 @@ export default function AdminPanel() {
           const resourcesRes = await fetch('/api/admin/resources');
           if (resourcesRes.ok) {
             const result = await resourcesRes.json();
-            setResources(result.success ? result.data : result);
+            setResources(result.success ? result.data.filter((r: any) => r.type !== 'VIDEO' && r.type !== 'GUIDANCE') : result.filter((r: any) => r.type !== 'VIDEO' && r.type !== 'GUIDANCE'));
+          }
+          break;
+        case 'credit-videos':
+          const creditVideosRes = await fetch('/api/admin/resources');
+          if (creditVideosRes.ok) {
+            const result = await creditVideosRes.json();
+            // Store in resources state for now, but UI will filter
+            setResources(result.success ? result.data.filter((r: any) => r.type === 'VIDEO') : result.filter((r: any) => r.type === 'VIDEO'));
+          }
+          break;
+        case 'guidance-video':
+          const guidanceVideoRes = await fetch('/api/admin/resources');
+          if (guidanceVideoRes.ok) {
+            const result = await guidanceVideoRes.json();
+            setResources(result.success ? result.data.filter((r: any) => r.type === 'GUIDANCE') : result.filter((r: any) => r.type === 'GUIDANCE'));
           }
           break;
         case 'uploads':
@@ -189,7 +192,8 @@ export default function AdminPanel() {
           type === 'followups' ? `/api/followup-letters/${id}` :
             type === 'workflows' ? `/api/workflows/${id}` :
               type === 'uploads' ? `/api/admin/uploads/${id}` :
-                `/api/admin/${type}/${id}`;
+                (activeSection === 'credit-videos' || activeSection === 'guidance-video') ? `/api/admin/resources/${id}` :
+                  `/api/admin/${type}/${id}`;
 
 
       const response = await fetch(endpoint, { method: 'DELETE' });
@@ -216,7 +220,8 @@ export default function AdminPanel() {
   const toggleStatus = async (id: string, type: string, currentStatus: boolean, field = 'enabled') => {
     setLoading(true);
     try {
-      const endpoint = type === 'users' ? `/api/users/${id}` : `/api/admin/${type}/${id}`;
+      const apiType = (type === 'credit-videos' || type === 'guidance-video') ? 'resources' : type;
+      const endpoint = type === 'users' ? `/api/users/${id}` : `/api/admin/${apiType}/${id}`;
       const body = type === 'users' ? { active: !currentStatus } : { [field]: !currentStatus };
 
       const response = await fetch(endpoint, {
@@ -283,7 +288,9 @@ export default function AdminPanel() {
             (data.id ? `/api/credit-letters/${data.id}` : '/api/credit-letters') :
             type === 'followups' ?
               (data.id ? `/api/followup-letters/${data.id}` : '/api/followup-letters') :
-              (data.id ? `/api/admin/${type}/${data.id}` : `/api/admin/${type}`);
+              ((type === 'credit-videos' || type === 'guidance-video') ?
+                (data.id ? `/api/admin/resources/${data.id}` : '/api/admin/resources') :
+                (data.id ? `/api/admin/${type}/${data.id}` : `/api/admin/${type}`));
 
 
 
@@ -315,9 +322,10 @@ export default function AdminPanel() {
     { id: 'followups', name: '📮 Follow-Up Letters' },
     { id: 'workflows', name: '🔄 Workflows' },
     { id: 'ai-prompts', name: '🤖 AI Prompts' },
-    { id: 'templates', name: '📝 Letter Templates' },
     { id: 'disclaimers', name: '⚖️ Disclaimers' },
     { id: 'resources', name: '🔗 Resource Links' },
+    { id: 'credit-videos', name: '🎥 Credit Videos' },
+    { id: 'guidance-video', name: '📺 Guidance Video' },
     { id: 'uploads', name: '📁 Uploaded Files' },
     { id: 'activity', name: '📈 System Activity' },
   ];
@@ -675,56 +683,6 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {/* Letter Templates Section */}
-              {activeSection === 'templates' && (
-                <div className="space-y-4">
-                  {templates.map((template) => (
-                    <div key={template.id} className="border border-gray-200 rounded-lg p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 capitalize">{template.category} Template</h3>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${template.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                            {template.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => toggleStatus(template.id, 'letter-templates', template.enabled)}
-                            className={`px-3 py-1 rounded text-sm font-medium ${template.enabled
-                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                              : 'admin-green-btn text-white'
-                              }`}
-                          >
-                            <span className={template.enabled ? '' : 'text-white'}>{template.enabled ? 'Disable' : 'Enable'}</span>
-                          </button>
-                          <button
-                            onClick={() => setEditingItem({ type: 'letter-templates', data: template })}
-                            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
-                          >
-                            <span className="text-white">Edit</span>
-                          </button>
-                          <button
-                            onClick={() => deleteRecord(template.id, 'letter-templates', `${template.category} template`)}
-                            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded"
-                          >
-                            <span className="text-white">Delete</span>
-                          </button>
-                        </div>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded mb-4">
-                        <pre className="text-sm text-gray-700 whitespace-pre-wrap">{template.content.substring(0, 200)}...</pre>
-                      </div>
-                      {template.disclaimer && (
-                        <div className="bg-yellow-50 p-3 rounded">
-                          <p className="text-sm text-yellow-800">{template.disclaimer}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {/* Disclaimers Section */}
               {activeSection === 'disclaimers' && (
                 <div className="space-y-4">
@@ -770,8 +728,8 @@ export default function AdminPanel() {
                 </div>
               )}
 
-              {/* Resources Section */}
-              {activeSection === 'resources' && (
+              {/* Resources, Credit Videos, and Guidance Video Sections */}
+              {(activeSection === 'resources' || activeSection === 'credit-videos' || activeSection === 'guidance-video') && (
                 <div className="space-y-4">
                   {resources.map((resource) => (
                     <div key={resource.id} className="border border-gray-200 rounded-lg p-6">
@@ -799,7 +757,7 @@ export default function AdminPanel() {
                             <span className={resource.visible ? '' : 'text-white'}>{resource.visible ? 'Hide' : 'Show'}</span>
                           </button>
                           <button
-                            onClick={() => setEditingItem({ type: 'resources', data: resource })}
+                            onClick={() => setEditingItem({ type: activeSection, data: resource })}
                             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded"
                           >
                             <span className="text-white">Edit</span>
@@ -942,7 +900,25 @@ export default function AdminPanel() {
 }
 
 function EditForm({ type, data, onSave, onCancel }: any) {
-  const [formData, setFormData] = useState(data);
+  // Initialize formData with proper defaults for video types
+  const getInitialFormData = () => {
+    const baseData = { ...data };
+
+    // Set default type for video sections if not already set
+    if (!baseData.type) {
+      if (type === 'credit-videos') {
+        baseData.type = 'VIDEO';
+      } else if (type === 'guidance-video') {
+        baseData.type = 'GUIDANCE';
+      } else if (type === 'resources') {
+        baseData.type = 'EXTERNAL';
+      }
+    }
+
+    return baseData;
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -973,12 +949,28 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             className="w-full p-2 border rounded"
           />
           <input
+            type="text"
+            placeholder="Username"
+            value={formData.username || ''}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            className="w-full p-2 border rounded"
+            required
+          />
+          <input
             type="email"
             placeholder="Email"
             value={formData.email || ''}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className="w-full p-2 border rounded"
             required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={formData.password || ''}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            className="w-full p-2 border rounded"
+            required={!formData.id}
           />
           <select
             value={formData.role || 'USER'}
@@ -993,17 +985,33 @@ function EditForm({ type, data, onSave, onCancel }: any) {
 
       {type === 'ai-prompts' && (
         <>
-          <select
-            value={formData.type || 'system'}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+          <input
+            type="text"
+            list="letter-types"
+            placeholder="Letter Type (e.g. collection, inquiry)"
+            value={formData.type || ''}
+            onChange={(e) => setFormData({ ...formData, type: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
             className="w-full p-2 border rounded"
             required
-          >
+          />
+          <datalist id="letter-types">
             <option value="system">System</option>
-            <option value="dispute">Dispute</option>
-            <option value="validation">Validation</option>
-            <option value="goodwill">Goodwill</option>
-          </select>
+            <option value="dispute">Dispute Letter</option>
+            <option value="validation">Validation Letter</option>
+            <option value="goodwill">Goodwill Letter</option>
+            <option value="collection">Collection Letter</option>
+            <option value="charge-off">Charge-Off Letter</option>
+            <option value="bankruptcy">Bankruptcy Letter</option>
+            <option value="inquiry">Inquiry Letter</option>
+            <option value="late-payment">Late Payment Letter</option>
+            <option value="repossession">Repossession Letter</option>
+            <option value="cfpb-complaint">CFPB Complaint Letter</option>
+            <option value="follow-up">Follow-Up Letter</option>
+            <option value="cease-and-desist">Cease and Desist Letter</option>
+            <option value="pay-for-delete">Pay for Delete Letter</option>
+            <option value="identity-theft">Identity Theft Letter</option>
+            <option value="mixed-file">Mixed File Letter</option>
+          </datalist>
           <textarea
             placeholder="Prompt content"
             value={formData.content || ''}
@@ -1014,31 +1022,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
         </>
       )}
 
-      {type === 'letter-templates' && (
-        <>
-          <input
-            type="text"
-            placeholder="Category"
-            value={formData.category || ''}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
-          />
-          <textarea
-            placeholder="Content"
-            value={formData.content || ''}
-            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            className="w-full p-2 border rounded h-32"
-            required
-          />
-          <textarea
-            placeholder="Disclaimer"
-            value={formData.disclaimer || ''}
-            onChange={(e) => setFormData({ ...formData, disclaimer: e.target.value })}
-            className="w-full p-2 border rounded h-20"
-          />
-        </>
-      )}
+
 
       {type === 'disclaimers' && (
         <>
@@ -1062,7 +1046,7 @@ function EditForm({ type, data, onSave, onCancel }: any) {
         </>
       )}
 
-      {type === 'resources' && (
+      {(type === 'resources' || type === 'credit-videos' || type === 'guidance-video') && (
         <>
           <input
             type="text"
@@ -1074,19 +1058,20 @@ function EditForm({ type, data, onSave, onCancel }: any) {
           />
           <input
             type="url"
-            placeholder="URL"
+            placeholder="URL (YouTube / Loom link)"
             value={formData.url || ''}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
             className="w-full p-2 border rounded"
             required
           />
           <select
-            value={formData.type || 'EXTERNAL'}
+            value={formData.type || (type === 'credit-videos' ? 'VIDEO' : type === 'guidance-video' ? 'GUIDANCE' : 'EXTERNAL')}
             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             className="w-full p-2 border rounded"
           >
             <option value="EXTERNAL">External Link</option>
             <option value="VIDEO">Video</option>
+            <option value="GUIDANCE">Guidance Video</option>
             <option value="COMMUNITY">Community</option>
           </select>
           <textarea
@@ -1151,6 +1136,17 @@ function EditForm({ type, data, onSave, onCancel }: any) {
             <option value="dispute">Dispute</option>
             <option value="validation">Validation</option>
             <option value="goodwill">Goodwill</option>
+            <option value="collection">Collection</option>
+            <option value="charge-off">Charge-Off</option>
+            <option value="bankruptcy">Bankruptcy</option>
+            <option value="inquiry">Inquiry</option>
+            <option value="late-payment">Late Payment</option>
+            <option value="repossession">Repossession</option>
+            <option value="cfpb-complaint">CFPB Complaint</option>
+            <option value="cease-and-desist">Cease and Desist</option>
+            <option value="pay-for-delete">Pay for Delete</option>
+            <option value="identity-theft">Identity Theft</option>
+            <option value="mixed-file">Mixed File</option>
           </select>
           <input
             type="text"

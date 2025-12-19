@@ -11,6 +11,7 @@ model User {
   id        String   @id @default(uuid())
   name      String?
   email     String   @unique
+  username  String?  @unique // Added for username/email login
   password  String?   // Added for auth
   role      Role     @default(USER)
   active    Boolean  @default(true)
@@ -73,13 +74,7 @@ model AIPrompt {
   enabled Boolean @default(true)
 }
 
-model LetterTemplate {
-  id         String  @id @default(uuid())
-  category   String
-  content    String
-  disclaimer String?
-  enabled    Boolean @default(true)
-}
+
 
 model Disclaimer {
   id      String  @id @default(uuid())

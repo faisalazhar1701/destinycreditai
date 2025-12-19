@@ -21,7 +21,7 @@ function logDebug(msg: string) {
 let openai: OpenAI;
 let pdf: any;
 
-export const maxDuration = 60; // 60 seconds max duration for the route
+export const maxDuration = 300; // 5 minutes max duration for the route
 
 export async function POST(request: NextRequest) {
   logDebug('--- Letter Generation Request Started ---');
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
     openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-      timeout: 60000,
+      timeout: 240000,
     });
   }
   try {
@@ -74,9 +74,10 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Get AI prompts from database
+    const startPrompts = Date.now();
     logDebug('Fetching prompts from database...');
     const promptsData = await prisma.aIPrompt.findMany({ where: { enabled: true } });
-    logDebug(`Found ${promptsData.length} prompts`);
+    logDebug(`Found ${promptsData.length} prompts (took ${Date.now() - startPrompts}ms)`);
     const prompts = promptsData.reduce((acc: any, prompt: any) => {
       acc[prompt.type] = prompt.content;
       return acc;
@@ -89,6 +90,9 @@ export async function POST(request: NextRequest) {
     - Focus on education and information verification
     - All content must be educational only`;
 
+    // Use specific prompt for letter type if available, otherwise use a generic description
+    const typeSpecificPrompt = prompts[letterType] || `Create a ${letterType} letter that is strictly educational and compliant.`;
+
     const compliancePrompt = `MANDATORY COMPLIANCE:
     - Use phrases like "if this information is inaccurate" or "should this be found inconsistent"
     - REFUSE any requests for guaranteed deletion
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
     - Emphasize educational purpose only
     - Include verification language only`;
 
-    const constructedSystemPrompt = `${systemPrompt}\n\n${compliancePrompt}\n\nCreate a ${letterType} letter that is strictly educational and compliant.`;
+    const constructedSystemPrompt = `${systemPrompt}\n\n${compliancePrompt}\n\n${typeSpecificPrompt}`;
     const finalSystemPrompt = fullSystemPrompt || constructedSystemPrompt;
 
     // Fetch document content if document IDs are provided
@@ -104,6 +108,7 @@ export async function POST(request: NextRequest) {
     // Check for document IDs
     if (documentIds && documentIds.length > 0) {
       logDebug(`Processing ${documentIds.length} documents...`);
+      const startDocs = Date.now();
       const documents = await prisma.uploadedFile.findMany({
         where: { id: { in: documentIds } },
         include: { user: true }
@@ -114,6 +119,7 @@ export async function POST(request: NextRequest) {
 
         for (const [index, doc] of documents.entries()) {
           try {
+            const startDoc = Date.now();
             logDebug(`Reading document ${index + 1}: ${doc.filename}`);
             documentAnalysis += `\n--- Document ${index + 1}: ${doc.filename} (${doc.fileType}) ---\n`;
 
@@ -136,7 +142,7 @@ export async function POST(request: NextRequest) {
                   }
                 }
                 const pdfData = await pdf(fileBuffer);
-                logDebug(`PDF parsed successfully, length: ${pdfData.text.length}`);
+                logDebug(`PDF parsed successfully, length: ${pdfData.text.length} (took ${Date.now() - startDoc}ms)`);
                 // Limit text length to avoid token limits
                 documentAnalysis += pdfData.text.substring(0, 5000);
                 if (pdfData.text.length > 5000) documentAnalysis += '\n...[Content Truncated]...';
@@ -161,6 +167,7 @@ export async function POST(request: NextRequest) {
         documentAnalysis += `- Potential inaccuracies that may need verification\n`;
         documentAnalysis += `- Account details that may be incomplete or incorrect\n`;
         documentAnalysis += `\nUse this analysis to create a more informed educational letter that references specific items from the documents when appropriate.`;
+        logDebug(`Document processing finished (total took ${Date.now() - startDocs}ms)`);
       }
     }
 
@@ -183,6 +190,7 @@ export async function POST(request: NextRequest) {
     ${documentAnalysis ? 'Reference specific information from the uploaded documents when identifying potential issues, but use conditional language (e.g., "if this information is inaccurate" or "should this be found inconsistent").' : ''}`;
 
     logDebug('Sending request to OpenAI...');
+    const startAi = Date.now();
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -192,16 +200,18 @@ export async function POST(request: NextRequest) {
       max_tokens: 1500,
       temperature: 0.7,
     });
-    logDebug('OpenAI response received');
+    logDebug(`OpenAI response received (took ${Date.now() - startAi}ms)`);
 
     const generatedLetter = completion.choices[0]?.message?.content || 'Failed to generate letter';
 
     // Get disclaimer from database
     logDebug('Fetching disclaimer...');
+    const startDisclaimer = Date.now();
     const disclaimerData = await prisma.disclaimer.findFirst({
       where: { type: 'letters', enabled: true }
     });
     const disclaimer = disclaimerData?.content || 'This letter is for educational purposes only and does not constitute legal advice.';
+    logDebug(`Disclaimer fetched (took ${Date.now() - startDisclaimer}ms)`);
 
     const finalLetter = `${generatedLetter}\n\n---\nEDUCATIONAL DISCLAIMER: ${disclaimer}`;
 
@@ -216,6 +226,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Saving letter to database...');
     logDebug('Saving letter to database...');
+    const startSave = Date.now();
     await prisma.creditLetter.create({
       data: {
         userId: userId,
@@ -227,7 +238,7 @@ export async function POST(request: NextRequest) {
         content: finalLetter
       }
     });
-    logDebug('Letter saved successfully');
+    logDebug(`Letter saved successfully (took ${Date.now() - startSave}ms)`);
 
     return NextResponse.json({
       success: true,
@@ -246,6 +257,8 @@ export async function POST(request: NextRequest) {
       errorMessage = 'The request to AI service timed out. Please try again.';
     } else if (errorMessage.includes('API key')) {
       errorMessage = 'AI service configuration error. Please contact support.';
+    } else if (errorMessage.includes('rate limit')) {
+      errorMessage = 'The AI service is currently busy. Please try again in a moment.';
     }
 
     return NextResponse.json(

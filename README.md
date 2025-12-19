@@ -1,78 +1,53 @@
-# Destiny Credit AI - Credit Education Platform
+# Destiny Credit AI Platform
 
-## 🌟 Overview
-**Destiny Credit AI** is a state-of-the-art educational platform designed to empower users with knowledge and tools to manage their credit health. By leveraging AI-driven letter generation, guided educational workflows, and a curated resource center, the platform simplifies complex credit processes while maintaining strict legal and educational compliance.
+Destiny Credit AI is a comprehensive credit education and financial guidance platform powered by AI. It helps users understand credit management, generate dispute letters, and tracks their progress.
 
-## 🏗 Project Architecture & Folder Structure
+## Folder Structure
 
-```
-destinycreditai/
-├── app/                      # Next.js App Router (Primary Logic)
-│   ├── (auth)/               # Authentication pages (Login, Signup, Reset)
-│   ├── admin/                # Admin Management Control Panel
-│   ├── api/                  # Server-side API Endpoints
-│   ├── dashboard/            # User Dashboard & Letter Generator
-│   ├── disclaimer/           # Mandatory Onboarding Disclaimer
-│   ├── resources/            # Public Resource Center
-│   ├── globals.css           # Global Design System & Variables
-│   ├── layout.tsx            # Root configuration & Navigation
-│   └── page.tsx              # Landing Page
-├── components/               # Shared UI Components (e.g., AdminAuth)
-├── lib/                      # Core Libraries (Prisma Client, Auth Utils)
-├── prisma/                   # Database Schema & Seed Scripts
-├── public/                   # Static Assets & Upload Storage
-├── tailwind.config.js        # Modern Design Styling Tokens
-└── README.md                 # Project Documentation
-```
+- `app/`: Next.js App Router routes and pages.
+  - `(auth)/`: Authentication pages (Login, Signup).
+  - `admin/`: Admin Panel for platform management.
+  - `dashboard/`: Main user dashboard for letter generation and tracking.
+  - `credit-videos/`: Educational video library.
+  - `resources/`: Educational resources and links.
+  - `api/`: Backend API routes.
+    - `admin/`: Admin-specific API endpoints (CRUD for users, prompts, resources, etc.).
+    - `generate-letter/`: AI letter generation logic via OpenAI.
+    - `upload/`: File upload and management.
+- `components/`: Reusable UI components.
+  - `AdminAuth.tsx`: Security wrapper for admin routes.
+- `lib/`: Utility libraries (Prisma client, Auth helpers, AI helpers).
+- `prisma/`: Database schema and migrations.
+- `public/`: Static assets (Logo, Uploads).
 
-## 🚀 Key Features
+## Admin Flow
 
-### 1. 🤖 AI Chat Letter Generator (`/dashboard`)
-- **Intelligence**: Powered by OpenAI **GPT-4o** for professional and compliant educational letters.
-- **Document Analysis**: Users can upload credit reports which the AI analyzes to identify specific inaccuracies.
-- **Compliance Guardrails**: Uses strictly conditional language ("if inaccurate") to ensure educational focus.
-- **Versatility**: Generates Dispute, Validation, and Goodwill letters for Experian, Equifax, and TransUnion.
+1. **Dashboard Management**: Admins can manage educational content, resources, and credit videos.
+2. **AI Configuration**: Admins can define specific AI prompts for different letter types (Dispute, Validation, Bankruptcy, etc.).
+3. **User Management**: Admins create users and set their initial passwords.
+4. **Guidance Video**: Admins can upload a central guidance video displayed on the user dashboard.
 
-### 2. 🎛 Admin Control Panel (`/admin`)
-- **Total Visibility**: A central hub to manage the entire platform ecosystem.
-- **User Management**: Add, edit, deactivate, or delete users and track their activity.
-- **Content Control**: CRUD operations for Workflows, AI Prompts, Letter Templates, and Disclaimers.
-- **Audit Logs**: Monitor generated letters and follow-ups across the system.
+## User Flow
 
-### 3. 🔄 Guided Workflows
-- **Step-by-Step Education**: Interactive modules that guide users through the credit dispute life cycle.
-- **Customizable**: Admins can dynamically add or modify workflows via a JSON-based step system.
-- **Categories**: Includes Metro 2 Education, Dispute Process, and Follow-up Guidance.
+1. **Login**: Users log in with credentials set by the administrator.
+2. **Dashboard**: Users access their credit workspace, see the guidance video, and generate letters.
+3. **Letter Generation**: Users select a letter type and can upload a credit report. The AI parses the report and generates a professional, compliant letter.
+4. **Follow-ups**: Users can track their letters and generate follow-up responses at 15, 30, and 45-day intervals.
+5. **Education**: Users can browse the Credit Video library and Resource Center.
 
-### 4. 📚 Resource Center
-- **Expert Curated**: Links to primary authorities like CFPB, FTC, and Official Credit Bureaus.
-- **Community Integrated**: Direct access to Skool Community, Loom tutorials, and YouTube education.
+## AI Logic Flow
 
-### 5. 📮 Follow-up System
-- **Timeline Tracking**: Support for 15, 30, and 45-day follow-up letter generation.
-- **Context Aware**: Links back to original dispute letters for continuity.
+1. **Input**: User provides basic info (Name, Creditor, Bureau) and selects a Letter Type. Optionally uploads a report (PDF/Image/Text).
+2. **Parsing**: If a report is uploaded, the backend uses AI-compatible parsing to extract credit details.
+3. **Prompt Construction**:
+   - Backend fetches the Admin-defined prompt for the selected Letter Type.
+   - Combines it with a base System Prompt and Compliance Rules.
+   - Injects the parsed report data if available.
+4. **Generation**: OpenAI (GPT-4) generates a professional, educational letter.
+5. **Output**: The letter is displayed to the user and saved for future follow-ups.
 
-## 🛠 Technical Implementation
+## Security
 
-### **Backend & Database**
-- **Framework**: Next.js 16 with App Router for optimized server-side rendering.
-- **Database**: PostgreSQL managed via **Prisma ORM** for high-performance data operations.
-- **Authentication**: JWT-based session security with role-based access (ADMIN vs USER).
-
-### **Compliance Logic**
-- **Non-Legal Advice**: Every generated letter includes a mandatory educational disclaimer.
-- **Onboarding Flow**: All users must accept a comprehensive legal disclaimer before accessing the dashboard.
-- **Timeouts**: API routes optimized with 60s `maxDuration` to ensure complex AI tasks complete reliably.
-
-## 📦 Getting Started
-
-1. **Install Dependencies**: `npm install`
-2. **Setup Database**: 
-   - Update `.env.local` with your `DATABASE_URL`.
-   - Run `npx prisma migrate dev` to initialize schemas.
-   - Run `node prisma/seed.js` to populate default workflows and prompts.
-3. **AI Integration**: Add your `OPENAI_API_KEY` to `.env.local`.
-4. **Run Locally**: `npm run dev`
-
----
-**Disclaimer**: *This project is for educational purposes only. It is not a credit repair service and does not provide legal or financial advice.*
+- JWT-based authentication for both users and admins.
+- Separate Admin login with role-based access control.
+- All file uploads are stored securely and associated with the uploader.

@@ -5,14 +5,20 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
     try {
-        const { email, password } = await request.json();
+        const { email, username, password } = await request.json();
+        const identifier = email || username;
 
-        if (!email || !password) {
-            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+        if (!identifier || !password) {
+            return NextResponse.json({ error: 'Email/Username and password are required' }, { status: 400 });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email },
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: identifier },
+                    { username: identifier }
+                ]
+            },
         });
 
         if (!user) {

@@ -32,6 +32,10 @@ export default function Dashboard() {
   const [selectedFollowUpDay, setSelectedFollowUpDay] = useState<number>(30);
   const [isUploading, setIsUploading] = useState(false);
   const [resources, setResources] = useState<any[]>([]);
+  const [creditVideos, setCreditVideos] = useState<any[]>([]);
+  const [guidanceVideo, setGuidanceVideo] = useState<any | null>(null);
+  const [aiPrompts, setAiPrompts] = useState<any[]>([]);
+  const [hasGuidance, setHasGuidance] = useState(false);
   const router = useRouter();
 
   const isFormValid = formData.userName && formData.creditorName && formData.accountNumber && formData.bureau && formData.disputeReason;
@@ -47,7 +51,7 @@ export default function Dashboard() {
             setUser(data.user);
             setFormData(prev => ({
               ...prev,
-              userName: data.user.name || prev.userName,
+              userName: (data.user.name && data.user.name !== 'Admin User') ? data.user.name : prev.userName,
             }));
           } else {
             // Middleware should handle this, but checking just in case
@@ -58,7 +62,19 @@ export default function Dashboard() {
         console.error('Failed to fetch user', err);
       }
     };
+    const fetchPrompts = async () => {
+      try {
+        const res = await fetch('/api/admin/ai-prompts');
+        const data = await res.json();
+        if (data.success) {
+          setAiPrompts(data.data.filter((p: any) => p.enabled && p.type !== 'system'));
+        }
+      } catch (e) {
+        console.error('Failed to fetch AI prompts', e);
+      }
+    };
     fetchUser();
+    fetchPrompts();
   }, [router]);
 
   const fetchWorkflows = async () => {
@@ -114,11 +130,15 @@ export default function Dashboard() {
     setError('');
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 280000); // 280 second timeout (just under 300s)
+
       const response = await fetch('/api/generate-letter', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           userName: formData.userName,
           userAddress: formData.userAddress,
@@ -131,6 +151,8 @@ export default function Dashboard() {
         }),
       });
 
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
@@ -139,11 +161,9 @@ export default function Dashboard() {
           setSelectedLetter('generated');
           setError('');
           await fetchCreditLetters();
-          alert('✅ Letter generated successfully!');
         } else {
           const errorMsg = result.error || 'Failed to generate letter';
           setError(errorMsg);
-          alert('❌ Generation failed: ' + errorMsg);
         }
       } else {
         let errorMsg = 'Failed to generate letter';
@@ -152,18 +172,30 @@ export default function Dashboard() {
           errorMsg = errorData.error || errorMsg;
         } catch (jsonErr) {
           console.error('Failed to parse error response as JSON:', jsonErr);
-          errorMsg = `Server error (${response.status}). Please contact support if this persists.`;
+          errorMsg = `Server error (${response.status}). The AI service might be busy or the request timed out. Please try again.`;
         }
         setError(errorMsg);
-        alert('❌ Generation failed: ' + errorMsg);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Network or Generation error:', error);
-      const errorMsg = 'Network error. This could be due to a timeout or connection issue. Please try again or check your internet.';
+      let errorMsg = 'Network error. This could be due to a timeout or connection issue. Please try again.';
+      if (error.name === 'AbortError') {
+        errorMsg = 'Request timed out. The AI service is taking longer than expected. Please try again with a shorter reason or fewer documents.';
+      }
       setError(errorMsg);
-      alert('❌ ' + errorMsg);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        router.push('/login');
+      }
+    } catch (err) {
+      console.error('Logout failed', err);
     }
   };
 
@@ -217,7 +249,7 @@ export default function Dashboard() {
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
+    if (!e.target.files || e.target.files.length === 0) return null;
 
     const file = e.target.files[0];
     const formDataObj = new FormData();
@@ -231,19 +263,22 @@ export default function Dashboard() {
         body: formDataObj,
       });
 
+      const result = await response.json();
       if (response.ok) {
-        const result = await response.json();
         if (result.success) {
           alert('✅ Document uploaded successfully!');
           fetchUploadedDocuments();
+          return result;
         } else {
           alert('❌ Upload failed: ' + (result.error || 'Unknown error'));
         }
       } else {
         alert('❌ Upload failed');
       }
+      return result;
     } catch (err) {
       alert('❌ Network error during upload');
+      return null;
     } finally {
       setIsUploading(false);
       // Reset input
@@ -592,7 +627,12 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setResources(result.data.filter((r: any) => r.visible === true));
+          const allRes = result.data.filter((r: any) => r.visible === true);
+          setResources(allRes.filter((r: any) => r.type !== 'VIDEO' && r.type !== 'GUIDANCE'));
+          setCreditVideos(allRes.filter((r: any) => r.type === 'VIDEO'));
+          const gVideo = allRes.find((r: any) => r.type === 'GUIDANCE');
+          setGuidanceVideo(gVideo || null);
+          setHasGuidance(!!gVideo);
         }
       }
     } catch (error) {
@@ -607,8 +647,23 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
     } else {
       setHasAccepted(true);
     }
+    const fetchFollowUpLetters = async () => {
+      try {
+        const res = await fetch('/api/followup-letters');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setFollowupLetters(data.data.map((l: any) => l.content));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch follow-ups', err);
+      }
+    };
+
     fetchWorkflows();
     fetchCreditLetters();
+    fetchFollowUpLetters();
     fetchUploadedDocuments();
     fetchResources();
   }, [router]);
@@ -630,19 +685,46 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
               Dashboard
             </h1>
           </div>
-          <div className="w-24 flex justify-end">
+          <div className="w-24 flex justify-end items-center gap-2">
             <Link href="/dashboard/settings" className="p-2 hover:bg-gray-100 rounded-full transition-colors title='Settings'">
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </Link>
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-red-50 text-red-600 rounded-full transition-colors title='Sign Out'"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
         </div>
         <p className="text-gray-600 text-center leading-relaxed">
           AI-powered credit education and dispute tools
         </p>
         <div className="w-24 h-0.5 bg-primary-green mx-auto mt-4 rounded-full"></div>
+
+        {/* Guidance Video - Optional */}
+        {guidanceVideo && (
+          <div className="mt-8 max-w-4xl mx-auto">
+            <div className="bg-white p-2 rounded-xl shadow-lg border border-gray-100 overflow-hidden aspect-video">
+              <iframe
+                className="w-full h-full rounded-lg"
+                src={guidanceVideo.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                title="Guidance Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+            <p className="text-center text-sm text-gray-500 mt-2 italic">
+              {guidanceVideo.description || 'Watch this brief guidance video to get started.'}
+            </p>
+          </div>
+        )}
+
         <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-2xl mx-auto">
           <p className="text-yellow-800 text-sm text-center font-medium leading-relaxed">
             <strong>Educational Platform:</strong> All tools provide educational information only. No legal advice or guaranteed outcomes. Users manually control all actions and decisions.
@@ -706,12 +788,30 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                   <select
                     value={formData.letterType}
                     onChange={(e) => setFormData({ ...formData, letterType: e.target.value })}
-                    className="w-full p-4 bg-pure-white text-primary-black rounded-lg border border-gray-300 focus:border-primary-green focus:ring-2 focus:ring-primary-green focus:ring-opacity-20 transition-all"
+                    className="w-full p-4 bg-pure-white text-primary-black rounded-lg border border-gray-300 focus:border-primary-green focus:ring-2 focus:ring-primary-green focus:ring-opacity-20 transition-all font-medium"
                     required
                   >
                     <option value="dispute">Dispute Letter</option>
                     <option value="validation">Validation Letter</option>
                     <option value="goodwill">Goodwill Letter</option>
+                    <option value="collection">Collection Letter</option>
+                    <option value="charge-off">Charge-Off Letter</option>
+                    <option value="bankruptcy">Bankruptcy Letter</option>
+                    <option value="inquiry">Inquiry Letter</option>
+                    <option value="late-payment">Late Payment Letter</option>
+                    <option value="repossession">Repossession Letter</option>
+                    <option value="cfpb-complaint">CFPB Complaint Letter</option>
+                    <option value="cease-and-desist">Cease and Desist Letter</option>
+                    <option value="pay-for-delete">Pay for Delete Letter</option>
+                    <option value="identity-theft">Identity Theft Letter</option>
+                    <option value="mixed-file">Mixed File Letter</option>
+                    {aiPrompts.map(prompt => (
+                      !['dispute', 'validation', 'goodwill', 'system', 'collection', 'charge-off', 'bankruptcy', 'inquiry', 'late-payment', 'repossession', 'cfpb-complaint', 'cease-and-desist', 'pay-for-delete', 'identity-theft', 'mixed-file'].includes(prompt.type) && (
+                        <option key={prompt.id} value={prompt.type}>
+                          {prompt.type.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} Letter
+                        </option>
+                      )
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -806,22 +906,53 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                   </p>
                 </div>
               )}
-              <div className="pt-6 border-t border-border-gray">
+              <div className="pt-6 border-t border-border-gray flex flex-wrap items-center gap-4">
                 <button
                   type="submit"
                   disabled={!isFormValid || isGenerating}
-                  className={`px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 tracking-tight ${isFormValid && !isGenerating
+                  className={`px-8 py-4 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 tracking-tight flex-1 sm:flex-none ${isFormValid && !isGenerating
                     ? 'bg-primary-green hover:bg-green-700 text-white cursor-pointer shadow-lg hover:shadow-xl'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                     }`}
                 >
-                  <span className="flex items-center">
+                  <span className="flex items-center justify-center">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     {isGenerating ? 'Generating...' : 'Generate Letter'}
                   </span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const fileInput = document.getElementById('report-upload') as HTMLInputElement;
+                    fileInput?.click();
+                  }}
+                  disabled={isUploading || isGenerating}
+                  className={`px-4 py-2 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 tracking-tight ${!isUploading && !isGenerating
+                    ? 'bg-primary-green hover:bg-green-700 text-white cursor-pointer shadow-md'
+                    : 'bg-gray-300 text-gray-400 cursor-not-allowed'
+                    }`}
+                >
+                  <span className="flex items-center justify-center text-xs">
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    {isUploading ? 'Uploading...' : 'Upload Report'}
+                  </span>
+                </button>
+                <input
+                  id="report-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const result = await handleUpload(e);
+                    if (result && result.success && result.data?.id) {
+                      setSelectedDocuments(prev => [...prev, result.data.id]);
+                    }
+                  }}
+                  accept=".pdf,image/*,.txt"
+                />
               </div>
             </form>
           </div>
@@ -967,7 +1098,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
           <div className="flex items-center mb-4">
             <div className="w-10 h-10 bg-primary-green/10 rounded-lg flex items-center justify-center mr-4">
               <svg className="w-5 h-5 text-primary-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
             <div>
@@ -977,95 +1108,85 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
               <div className="w-16 h-0.5 bg-primary-green mt-1 rounded-full"></div>
             </div>
           </div>
-          <p className="text-gray-600 leading-relaxed">
-            Generate AI-powered follow-up letters for existing disputes
+          <p className="text-gray-600 leading-relaxed mb-6">
+            Educational follow-up letters to track dispute progress (15, 30, and 45 days)
           </p>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border border-gray-200 rounded-lg p-6">
-            <h3 className="font-semibold text-primary-black mb-4 tracking-tight">Generated Letters</h3>
-            <div className="space-y-3 mb-4">
-              {creditLetters.length > 0 ? (
-                creditLetters.slice(0, 3).map((letter) => (
-                  <div key={letter.id} className="p-3 bg-gray-50 rounded">
-                    <div className="text-sm font-medium text-primary-black">
-                      {letter.letterType} - {letter.bureau}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {letter.creditorName} - {new Date(letter.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-gray-500 text-sm">No letters generated yet</div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Select Follow-up Stage:</label>
-                <div className="flex space-x-2">
-                  {[15, 30, 45].map((day) => (
-                    <button
-                      key={day}
-                      onClick={() => setSelectedFollowUpDay(day)}
-                      className={`px-3 py-1 rounded text-sm border transition-colors ${selectedFollowUpDay === day
-                        ? 'bg-primary-green text-white border-primary-green'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                    >
-                      {day} Days
-                    </button>
-                  ))}
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            {[15, 30, 45].map((day) => (
+              <button
+                key={day}
+                onClick={() => {
+                  setSelectedFollowUpDay(day);
+                  setSelectedLetter(`day${day}`);
+                }}
+                className={`flex items-center justify-center p-4 border rounded-xl transition-all font-bold tracking-tight ${selectedFollowUpDay === day
+                  ? 'bg-primary-green border-primary-green text-white shadow-md transform scale-105'
+                  : 'bg-white border-gray-200 text-primary-black hover:border-primary-green hover:bg-gray-50'
+                  }`}
+              >
+                Day {day} Letter
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-light-gray p-6 rounded-xl border border-dashed border-gray-300">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-gray-600">
+                Generate an AI-powered follow-up letter based on your history
               </div>
               <button
                 onClick={generateFollowUp}
-                disabled={creditLetters.length === 0 || isGenerating}
-                className="w-full bg-primary-green hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors tracking-tight disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={isGenerating || creditLetters.length === 0}
+                className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${isGenerating || creditLetters.length === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary-green hover:bg-green-700 text-white shadow-lg'
+                  }`}
               >
-                {isGenerating ? 'Generating...' : `Generate ${selectedFollowUpDay}-Day Follow-up`}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                {isGenerating ? 'Generating...' : `Generate Day ${selectedFollowUpDay} AI Follow-Up`}
               </button>
-              <div className="text-xs text-gray-500 text-center">
-                Or use templates on the right →
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-gray-200 rounded-lg p-6">
-            <h3 className="font-semibold text-primary-black mb-4 tracking-tight">Follow-up Templates</h3>
-            <div className="space-y-3 mb-4">
-              <div className="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onClick={() => setSelectedLetter('day15')}>
-                <div className="text-sm font-medium text-primary-black">Day 15 Follow-Up</div>
-                <div className="text-xs text-gray-500">First follow-up template</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onClick={() => setSelectedLetter('day30')}>
-                <div className="text-sm font-medium text-primary-black">Day 30 Follow-Up</div>
-                <div className="text-xs text-gray-500">Second follow-up template</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded cursor-pointer hover:bg-gray-100" onClick={() => setSelectedLetter('day45')}>
-                <div className="text-sm font-medium text-primary-black">Day 45 Follow-Up</div>
-                <div className="text-xs text-gray-500">Final follow-up template</div>
-              </div>
-              {followupLetters.length > 0 && (
-                <div className="border-t pt-3 mt-3">
-                  <div className="text-xs text-gray-500 mb-2">Generated Follow-ups:</div>
-                  {followupLetters.map((letter, index) => (
-                    <div key={index} className="p-2 bg-blue-50 rounded mb-2">
-                      <div className="text-sm font-medium text-primary-black">
-                        Follow-up Letter #{index + 1}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Generated today
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
+
+        {followupLetters.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-primary-black tracking-tight flex items-center">
+              <span className="w-2 h-2 bg-primary-green rounded-full mr-2"></span>
+              Recent Follow-Up History
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {followupLetters.slice(0, 4).map((letter, idx) => (
+                <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 group">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-bold text-primary-green uppercase">Generated Follow-Up</span>
+                    <span className="text-[10px] text-gray-400">Recently created</span>
+                  </div>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-3 leading-relaxed">
+                    {letter}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setEditedLetter(letter);
+                      setGeneratedLetter(letter);
+                      setSelectedLetter('generated');
+                    }}
+                    className="text-primary-green hover:text-green-700 text-xs font-bold transition-colors"
+                  >
+                    View & Download
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Credit Videos section removed from dashboard as per request */}
+
 
 
       {
@@ -1078,7 +1199,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
               <div className="p-4 sm:p-6 border-b border-border-gray">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg sm:text-2xl font-bold text-primary-black truncate mr-4">
-                    {selectedLetter ? getLetterTemplate(selectedLetter)?.title : ''}
+                    {selectedLetter ? getLetterTemplate(selectedLetter || '')?.title : ''}
                   </h3>
                   <button
                     onClick={() => {
@@ -1103,7 +1224,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                     />
                   ) : (
                     <pre className="text-primary-black whitespace-pre-wrap font-sans text-xs sm:text-sm" style={{ lineHeight: '1.7' }}>
-                      {selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter)?.content : '')}
+                      {selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter || '')?.content : '')}
                     </pre>
                   )}
                 </div>
@@ -1120,14 +1241,14 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                       </button>
                     )}
                     <button
-                      onClick={() => navigator.clipboard.writeText(selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter)?.content || '' : ''))}
+                      onClick={() => navigator.clipboard.writeText(selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter || '')?.content || '' : ''))}
                       className="bg-primary-green hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm"
                     >
                       Copy Text
                     </button>
                     <button
                       onClick={() => {
-                        const content = selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter)?.content || '' : '');
+                        const content = selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter || '')?.content || '' : '');
                         const blob = new Blob([content], { type: 'text/plain' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1143,7 +1264,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                     <button
                       onClick={async () => {
                         const { jsPDF } = await import('jspdf');
-                        const content = selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter)?.content || '' : '');
+                        const content = selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter || '')?.content || '' : '');
                         const pdf = new jsPDF();
                         const lines = pdf.splitTextToSize(content, 180);
                         pdf.text(lines, 15, 20);
@@ -1176,7 +1297,6 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
           </div>
         )
       }
-
       {
         selectedWorkflow && (
           <div
@@ -1188,10 +1308,10 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg sm:text-2xl font-bold text-primary-black">
-                      {selectedWorkflow ? getWorkflowContent(selectedWorkflow, workflows)?.title : ''}
+                      {selectedWorkflow ? getWorkflowContent(selectedWorkflow || '', workflows)?.title : ''}
                     </h3>
                     <p className="text-gray-600 text-sm mt-2">
-                      {selectedWorkflow ? getWorkflowContent(selectedWorkflow, workflows)?.description : ''}
+                      {selectedWorkflow ? getWorkflowContent(selectedWorkflow || '', workflows)?.description : ''}
                     </p>
                   </div>
                   <button
@@ -1205,7 +1325,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
 
               <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh]">
                 <div className="space-y-6">
-                  {selectedWorkflow && getWorkflowContent(selectedWorkflow, workflows)?.steps?.map(
+                  {selectedWorkflow && getWorkflowContent(selectedWorkflow || '', workflows)?.steps?.map(
                     (step: any, index: number) => (
                       <div
                         key={index}
@@ -1250,6 +1370,6 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
           </div>
         )
       }
-    </div >
+    </div>
   );
 }

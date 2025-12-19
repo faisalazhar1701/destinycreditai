@@ -80,17 +80,77 @@ async function main() {
     },
     {
       type: 'dispute',
-      content: 'Create a professional dispute letter that uses conditional language like "if inaccurate" and "may be inconsistent".',
+      content: 'Create a professional dispute letter that uses conditional language like "if inaccurate" and "may be inconsistent". Focus on requesting verification of reported information and highlighting potential inaccuracies.',
       enabled: true
     },
     {
       type: 'validation',
-      content: 'Create a validation letter requesting verification of account details and reporting accuracy.',
+      content: 'Create a validation letter requesting verification of account details and reporting accuracy. Request proof of debt ownership and original creditor information using conditional language.',
       enabled: true
     },
     {
       type: 'goodwill',
-      content: 'Create a goodwill letter requesting consideration for removal of accurate but negative information.',
+      content: 'Create a goodwill letter requesting consideration for removal of accurate but negative information. Emphasize positive payment history and circumstances that led to the issue using respectful tone.',
+      enabled: true
+    },
+    {
+      type: 'collection',
+      content: 'Create a collection dispute letter focusing on verification of the debt and reporting accuracy. Request validation of the debt, proof of ownership, and verification of the amount using conditional language.',
+      enabled: true
+    },
+    {
+      type: 'charge-off',
+      content: 'Create a charge-off dispute letter focusing on the reporting of balance and status accuracy. Request verification of the charge-off date, balance, and current reporting status using educational tone.',
+      enabled: true
+    },
+    {
+      type: 'bankruptcy',
+      content: 'Create a bankruptcy dispute letter focusing on the accuracy of reporting after discharge. Verify that accounts included in bankruptcy are reported correctly and request updates if inaccurate.',
+      enabled: true
+    },
+    {
+      type: 'inquiry',
+      content: 'Create an inquiry dispute letter requesting removal of unauthorized credit inquiries. Focus on verifying permission and proper authorization for each inquiry using conditional language.',
+      enabled: true
+    },
+    {
+      type: 'late-payment',
+      content: 'Create a late payment dispute letter focusing on the accuracy of reported payment timing. Request verification of payment dates and amounts, highlighting any discrepancies using conditional language.',
+      enabled: true
+    },
+    {
+      type: 'repossession',
+      content: 'Create a repossession dispute letter focusing on the accuracy of repossession reporting. Verify the dates, amounts, and procedures followed, requesting corrections if information appears inaccurate.',
+      enabled: true
+    },
+    {
+      type: 'cfpb-complaint',
+      content: 'Create a formal CFPB complaint letter detailing the issue with credit reporting and lack of resolution. Document previous dispute attempts and request CFPB intervention using formal but educational tone.',
+      enabled: true
+    },
+    {
+      type: 'follow-up',
+      content: 'Create a follow-up letter referencing a previous dispute that was not adequately addressed. Request status update and remind of legal timeframes for investigation using conditional language.',
+      enabled: true
+    },
+    {
+      type: 'cease-and-desist',
+      content: 'Create a cease and desist letter requesting that a collector stop all communication. Reference FDCPA rights and request compliance using firm but professional language.',
+      enabled: true
+    },
+    {
+      type: 'pay-for-delete',
+      content: 'Create a pay for delete negotiation letter offering payment in exchange for removal of negative item. Propose settlement terms and request written agreement using professional negotiation tone.',
+      enabled: true
+    },
+    {
+      type: 'identity-theft',
+      content: 'Create an identity theft dispute letter explaining fraudulent accounts. Include reference to identity theft report and request immediate removal of fraudulent items using urgent but educational tone.',
+      enabled: true
+    },
+    {
+      type: 'mixed-file',
+      content: 'Create a mixed file dispute letter addressing accounts belonging to someone else. Request separation of files and removal of incorrect information using clear explanatory language.',
       enabled: true
     }
   ];

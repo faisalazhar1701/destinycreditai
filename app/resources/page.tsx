@@ -31,14 +31,16 @@ export default function Resources() {
         const linksRes = await fetch('/api/admin/resources');
         const linksData = await linksRes.json();
         if (linksData.success) {
-          setLinks(linksData.data.filter((l: Resource) => l.visible));
+          // Filter out videos
+          setLinks(linksData.data.filter((l: Resource) => l.visible && l.type !== 'VIDEO'));
         }
 
         // Fetch uploaded files (publicly accessible ones)
         const uploadsRes = await fetch('/api/upload');
         const uploadsData = await uploadsRes.json();
         if (uploadsData.success) {
-          setUploads(uploadsData.data);
+          // Filter out video files
+          setUploads(uploadsData.data.filter((f: Upload) => !f.fileType.includes('video')));
         }
       } catch (e) {
         console.error('Failed to fetch resources', e);

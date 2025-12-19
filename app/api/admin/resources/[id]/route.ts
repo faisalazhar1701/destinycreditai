@@ -7,11 +7,18 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { title, url, visible } = await request.json();
+    const { title, url, type, description, visible } = await request.json();
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (url !== undefined) updateData.url = url;
+    if (type !== undefined) updateData.type = type;
+    if (description !== undefined) updateData.description = description;
+    if (visible !== undefined) updateData.visible = visible;
 
     const resource = await prisma.resourceLink.update({
       where: { id },
-      data: { title, url, visible }
+      data: updateData
     });
 
     return NextResponse.json({ success: true, data: resource });

@@ -7,11 +7,18 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { name, email, role, active } = await request.json();
+    const { name, email, username, role, active, password } = await request.json();
+
+    const updateData: any = { name, email, username, role: role?.toUpperCase() as 'USER' | 'ADMIN', active };
+
+    if (password) {
+      const bcrypt = require('bcryptjs');
+      updateData.password = await bcrypt.hash(password, 10);
+    }
 
     const user = await prisma.user.update({
       where: { id },
-      data: { name, email, role: role?.toUpperCase() as 'USER' | 'ADMIN', active }
+      data: updateData
     });
 
     return NextResponse.json({ success: true, data: user });

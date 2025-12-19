@@ -41,6 +41,9 @@ export default function RootLayout({
                 <a href="/dashboard" className="text-primary-black hover:text-primary-green transition-colors font-medium">
                   Dashboard
                 </a>
+                <a href="/credit-videos" className="text-primary-black hover:text-primary-green transition-colors font-medium">
+                  Credit Videos
+                </a>
                 <a href="/resources" className="text-primary-black hover:text-primary-green transition-colors font-medium">
                   Resources
                 </a>
