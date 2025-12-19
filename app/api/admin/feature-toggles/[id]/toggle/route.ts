@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '../../../../../../lib/database';
+import pool from '@/lib/database';
 
 export async function PATCH(
   request: NextRequest,
@@ -40,4 +40,3 @@ export async function PATCH(
     );
   }
 }
-
