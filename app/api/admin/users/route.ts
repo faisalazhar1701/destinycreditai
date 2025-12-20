@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, username, role = 'USER', active = true, password } = await request.json();
+    const { name, email, role = 'USER', active = true, password } = await request.json();
 
     // Hash password (default to 'password123' if not provided)
     const passwordToHash = password || 'password123';
@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
-        username,
         role: role.toUpperCase() as 'USER' | 'ADMIN',
         active,
         password: hashedPassword
