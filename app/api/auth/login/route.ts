@@ -120,13 +120,16 @@ export async function POST(request: Request) {
     });
 
     // Set auth cookie using NextResponse (not Edge API)
-    response.cookies.set('auth_token', token, {
+    response.cookies.set({
+      name: 'auth_token',
+      value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      secure: true,        // MUST be true on Vercel
+      sameSite: 'none',    // REQUIRED for Edge + redirects
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
-      sameSite: 'lax',
     });
+
 
     console.log('✅ Login successful for:', email);
     return response;
