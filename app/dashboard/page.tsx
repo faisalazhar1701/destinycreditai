@@ -64,7 +64,8 @@ export default function Dashboard() {
     };
     const fetchPrompts = async () => {
       try {
-        const res = await fetch('/api/admin/ai-prompts');
+        // Use public endpoint for AI prompts
+        const res = await fetch('/api/admin/ai-prompts/public');
         const data = await res.json();
         if (data.success) {
           setAiPrompts(data.data.filter((p: any) => p.enabled && p.type !== 'system'));
@@ -79,7 +80,8 @@ export default function Dashboard() {
 
   const fetchWorkflows = async () => {
     try {
-      const response = await fetch('/api/workflows');
+      // Use public endpoint for workflows
+      const response = await fetch('/api/workflows/public');
 
       if (response.ok) {
         const result = await response.json();
@@ -105,7 +107,8 @@ export default function Dashboard() {
 
   const fetchCreditLetters = async () => {
     try {
-      const response = await fetch('/api/credit-letters');
+      // Use public endpoint for credit letters (authenticated)
+      const response = await fetch('/api/credit-letters/public');
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
@@ -688,7 +691,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
           <div className="w-24 flex justify-end items-center gap-2">
             <Link href="/dashboard/settings" className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Settings">
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.33 4.32c.43-1.75 2.92-1.75 3.35 0a1.72 1.72 0 002.57 1.06c1.54-.94 3.31.83 2.37 2.37a1.72 1.72 0 001.06 2.57c1.76.43 1.76 2.92 0 3.35a1.72 1.72 0 00-1.06 2.57c.94 1.54-.83 3.31-2.37 2.37a1.72 1.72 0 00-2.57 1.06c-.43 1.76-2.92 1.76-3.35 0a1.72 1.72 0 00-2.57-1.06c-1.54.94-3.31-.83-2.37-2.37a1.72 1.72 0 00-1.06-2.57c-.43-1.76-2.92-1.76-3.35 0a1.72 1.72 0 00-1.06 2.57c.94 1.54-.83 3.31 2.37 2.37a1.72 1.72 0 002.57-1.06z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </Link>
@@ -980,7 +983,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
             <div className="flex items-center mb-6">
               <div className="w-10 h-10 bg-primary-green/10 rounded-lg flex items-center justify-center mr-4">
                 <svg className="w-5 h-5 text-primary-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
@@ -1184,7 +1187,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                       setGeneratedLetter(letter);
                       setSelectedLetter('generated');
                     }}
-                    className="text-primary-green hover:text-green-700 text-xs font-bold transition-colors"
+                    className="bg-primary-green hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold transition-colors"
                   >
                     View & Download
                   </button>
@@ -1364,7 +1367,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                   <div className="flex justify-center">
                     <button
                       onClick={() => setSelectedWorkflow(null)}
-                      className="bg-primary-green hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                      className="bg-primary-green hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors mb-4"
                     >
                       Close Workflow
                     </button>
