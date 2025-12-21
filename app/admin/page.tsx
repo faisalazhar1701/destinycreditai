@@ -221,7 +221,7 @@ export default function AdminPanel() {
     setLoading(true);
     try {
       const apiType = (type === 'credit-videos' || type === 'guidance-video') ? 'resources' : type;
-      const endpoint = type === 'users' ? `/api/users/${id}` : `/api/admin/${apiType}/${id}`;
+      const endpoint = type === 'users' ? `/api/admin/users/${id}` : `/api/admin/${apiType}/${id}`;
       const body = type === 'users' ? { active: !currentStatus } : { [field]: !currentStatus };
 
       const response = await fetch(endpoint, {
