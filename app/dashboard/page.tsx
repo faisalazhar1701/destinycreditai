@@ -1282,9 +1282,35 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                         const { jsPDF } = await import('jspdf');
                         const content = selectedLetter === 'generated' ? editedLetter : (selectedLetter ? getLetterTemplate(selectedLetter || '')?.content || '' : '');
                         const pdf = new jsPDF();
-                        const lines = pdf.splitTextToSize(content, 180);
-                        pdf.text(lines, 15, 20);
-                        pdf.text('EDUCATIONAL DISCLAIMER: This letter is for educational purposes only. User must verify all information before use. No legal advice or guaranteed outcomes provided.', 15, pdf.internal.pageSize.height - 30, { maxWidth: 180 });
+                        
+                        // Set up margins and page dimensions
+                        const marginLeft = 15;
+                        const marginTop = 20;
+                        const marginRight = 15;
+                        const marginBottom = 30;
+                        const pageWidth = pdf.internal.pageSize.width;
+                        const pageHeight = pdf.internal.pageSize.height;
+                        const contentWidth = pageWidth - marginLeft - marginRight;
+                        
+                        // Split content into lines that fit within the page width
+                        const contentLines = pdf.splitTextToSize(content, contentWidth);
+                        
+                        // Add content lines to PDF with proper positioning
+                        let currentY = marginTop;
+                        const lineHeight = 7; // Approximate line height
+                        
+                        // Add each line of content
+                        for (let i = 0; i < contentLines.length; i++) {
+                          // Check if we need a new page
+                          if (currentY > pageHeight - marginBottom) {
+                            pdf.addPage();
+                            currentY = marginTop;
+                          }
+                          
+                          pdf.text(contentLines[i], marginLeft, currentY);
+                          currentY += lineHeight;
+                        }
+                        
                         pdf.save(`dispute-letter-${Date.now()}.pdf`);
                       }}
                       className="bg-red-600 hover:bg-red-700 text-white hover:text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm"
@@ -1304,7 +1330,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                   </div>
                   <div className="border-t border-gray-300 pt-4">
                     <p className="text-gray-600 text-xs sm:text-sm">
-                      <strong>Educational Disclaimer:</strong> This letter is provided for educational purposes only. User must verify all information before use. No legal advice or guaranteed outcomes are provided.
+                      <strong>Educational Disclaimer:</strong> This letter is provided for educational purposes only. User must verify all information before use. No legal advice or guaranteed outcomes provided.
                     </p>
                   </div>
                 </div>
