@@ -623,7 +623,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
   };
   const fetchResources = async () => {
     try {
-      const response = await fetch('/api/admin/resources');
+      const response = await fetch('/api/admin/resources?public=true');
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
@@ -946,7 +946,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                 >
                   <span className="flex items-center justify-center text-xs">
                     <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     {isUploading ? 'Uploading...' : 'Upload Report'}
                   </span>
@@ -980,7 +980,7 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
             <div className="flex items-center mb-6">
               <div className="w-10 h-10 bg-primary-green/10 rounded-lg flex items-center justify-center mr-4">
                 <svg className="w-5 h-5 text-primary-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
               </div>
               <div>

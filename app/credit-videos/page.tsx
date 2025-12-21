@@ -27,8 +27,8 @@ export default function CreditVideos() {
     useEffect(() => {
         const fetchResources = async () => {
             try {
-                // Fetch external links
-                const linksRes = await fetch('/api/admin/resources');
+                // Fetch external links - now using public endpoint
+                const linksRes = await fetch('/api/admin/resources?public=true');
                 const linksData = await linksRes.json();
                 if (linksData.success) {
                     // Show ONLY videos
