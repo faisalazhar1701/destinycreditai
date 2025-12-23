@@ -301,11 +301,20 @@ ${fileContent}
           alert('❌ Upload failed: ' + (result.error || 'Unknown error'));
         }
       } else {
-        alert('❌ Upload failed');
+        let errorMsg = 'Upload failed';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || `Server error (${response.status})`;
+        } catch (jsonErr) {
+          console.error('Failed to parse upload error response as JSON:', jsonErr);
+          errorMsg = `Server error (${response.status}) while uploading.`;
+        }
+        alert('❌ ' + errorMsg);
       }
       return result;
     } catch (err) {
-      alert('❌ Network error during upload');
+      console.error('Network error during upload:', err);
+      alert('❌ Network error during upload. Please check your connection or try again later.');
       return null;
     } finally {
       setIsUploading(false);

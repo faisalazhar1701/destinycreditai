@@ -6,6 +6,22 @@ import path from 'path';
 import { randomBytes } from 'crypto';
 
 /**
+ * Ensures the temporary uploads directory exists
+ */
+async function ensureTempUploadDir() {
+  const uploadDir = path.join(process.cwd(), 'public/temp_uploads');
+  try {
+    await mkdir(uploadDir, { recursive: true });
+    // Check if directory is writable
+    await access(uploadDir);
+    return uploadDir;
+  } catch (e) {
+    console.error('Error creating/accessing temp upload directory:', e);
+    throw e;
+  }
+}
+
+/**
  * Cleans up temporary files that are older than the specified age (in minutes)
  */
 async function cleanupTempFiles(maxAgeMinutes: number = 60) {
@@ -46,7 +62,10 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const fileType = formData.get('fileType') as string || 'document';
 
+    console.log('Upload request received for user:', userId, 'File:', file?.name, 'Size:', file?.size, 'Type:', file?.type);
+
     if (!file) {
+      console.log('No file provided in upload request');
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
@@ -66,20 +85,19 @@ export async function POST(request: NextRequest) {
     // Create a temporary filename with user ID and random string to avoid conflicts
     const uniqueFilename = `temp_${userId}_${Date.now()}_${randomBytes(8).toString('hex')}_${filename}`;
     
-    // Use a temporary uploads directory
-    const uploadDir = path.join(process.cwd(), 'public/temp_uploads');
+    // Ensure the temporary uploads directory exists
+    let uploadDir;
     try {
-      await mkdir(uploadDir, { recursive: true });
-      // Check if directory is writable
-      await access(uploadDir);
+      uploadDir = await ensureTempUploadDir();
     } catch (e) {
       console.error('Error creating/accessing temp upload directory:', e);
-      return NextResponse.json({ success: false, error: 'Upload directory error. Please contact administrator.' }, { status: 500 });
+      return NextResponse.json({ success: false, error: `Upload directory error: ${(e as Error).message || 'Unable to create/access temp directory'}. Please contact administrator.` }, { status: 500 });
     }
 
     const filepath = path.join(uploadDir, uniqueFilename);
     try {
       await writeFile(filepath, buffer);
+      console.log('File saved successfully:', filepath);
     } catch (writeError) {
       console.error('Error writing file:', writeError);
       return NextResponse.json({ success: false, error: 'Failed to save file. Check disk space and permissions.' }, { status: 500 });
