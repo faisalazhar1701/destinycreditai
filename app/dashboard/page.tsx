@@ -136,6 +136,29 @@ export default function Dashboard() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 280000); // 280 second timeout (just under 300s)
 
+      // Process temporary files to extract content before sending to AI
+      let documentContent = '';
+      if (selectedDocuments.length > 0) {
+        // For temporary files, we need to read their content
+        // We'll send the content directly instead of file paths
+        for (const tempPath of selectedDocuments) {
+          try {
+            const response = await fetch(tempPath);
+            if (response.ok) {
+              const fileContent = await response.text();
+              documentContent += `
+--- Document Content (${tempPath}) ---
+${fileContent}
+--- End Document ---
+`;
+            }
+          } catch (error) {
+            console.error('Error reading temporary file:', error);
+            documentContent += `\n--- Error reading document: ${tempPath} ---\n`;
+          }
+        }
+      }
+
       const response = await fetch('/api/generate-letter', {
         method: 'POST',
         headers: {
@@ -150,7 +173,8 @@ export default function Dashboard() {
           disputeReason: formData.disputeReason,
           bureau: formData.bureau,
           letterType: formData.letterType,
-          documentIds: selectedDocuments.length > 0 ? selectedDocuments : undefined
+          documentContent: documentContent || undefined,
+          documentPaths: selectedDocuments.length > 0 ? selectedDocuments : undefined
         }),
       });
 
@@ -270,7 +294,8 @@ export default function Dashboard() {
       if (response.ok) {
         if (result.success) {
           alert('✅ Document uploaded successfully!');
-          fetchUploadedDocuments();
+          // Don't call fetchUploadedDocuments() since we're not storing in DB
+          // Instead, we'll use the temporary file path directly in the AI generation
           return result;
         } else {
           alert('❌ Upload failed: ' + (result.error || 'Unknown error'));
@@ -612,17 +637,9 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
   };
 
   const fetchUploadedDocuments = async () => {
-    try {
-      const response = await fetch('/api/upload');
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setUploadedDocuments(result.data);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch uploaded documents:', error);
-    }
+    // Since we're not storing reference files in the database anymore,
+    // we don't need to fetch uploaded documents
+    setUploadedDocuments([]);
   };
   const fetchResources = async () => {
     try {
@@ -884,33 +901,28 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                   required
                 />
               </div>
-              {uploadedDocuments.length > 0 && (
+              {selectedDocuments.length > 0 && (
                 <div>
                   <label className="block text-primary-black font-medium mb-3 tracking-tight">
-                    Reference Uploaded Documents (Optional)
+                    Selected Documents for AI Analysis
                   </label>
                   <p className="text-gray-600 text-sm mb-3 leading-relaxed">
-                    Select uploaded documents (credit reports, statements, etc.) to help AI identify missing or inconsistent information
+                    The following documents will be used to help AI identify missing or inconsistent information
                   </p>
                   <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-4">
-                    {uploadedDocuments.map((doc) => (
-                      <label key={doc.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                        <input
-                          type="checkbox"
-                          checked={selectedDocuments.includes(doc.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedDocuments([...selectedDocuments, doc.id]);
-                            } else {
-                              setSelectedDocuments(selectedDocuments.filter(id => id !== doc.id));
-                            }
-                          }}
-                          className="w-4 h-4 text-primary-green border-gray-300 rounded focus:ring-primary-green"
-                        />
+                    {selectedDocuments.map((path, index) => (
+                      <div key={index} className="flex items-center space-x-2 p-2 rounded bg-gray-50">
                         <span className="text-sm text-primary-black">
-                          {doc.filename} ({doc.fileType})
+                          Document {index + 1}: {path.split('/').pop()}
                         </span>
-                      </label>
+                        <button 
+                          type="button" 
+                          onClick={() => setSelectedDocuments(prev => prev.filter((_, i) => i !== index))}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -963,8 +975,9 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                   className="hidden"
                   onChange={async (e) => {
                     const result = await handleUpload(e);
-                    if (result && result.success && result.data?.id) {
-                      setSelectedDocuments(prev => [...prev, result.data.id]);
+                    if (result && result.success && result.data?.tempPath) {
+                      // Store temporary file path instead of database ID
+                      setSelectedDocuments(prev => [...prev, result.data.tempPath]);
                     }
                   }}
                   accept=".pdf,image/*,.txt"

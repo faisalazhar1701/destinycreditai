@@ -1,9 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
-import { writeFile, mkdir, access } from 'fs/promises';
+import { writeFile, mkdir, access, readdir, stat, unlink } from 'fs/promises';
 import path from 'path';
+import { randomBytes } from 'crypto';
+
+/**
+ * Cleans up temporary files that are older than the specified age (in minutes)
+ */
+async function cleanupTempFiles(maxAgeMinutes: number = 60) {
+  try {
+    const tempDir = path.join(process.cwd(), 'public', 'temp_uploads');
+    const files = await readdir(tempDir);
+    
+    const now = Date.now();
+    for (const file of files) {
+      const filePath = path.join(tempDir, file);
+      const fileStat = await stat(filePath);
+      
+      // Check if file is older than maxAgeMinutes
+      if (now - fileStat.mtime.getTime() > maxAgeMinutes * 60 * 1000) {
+        await unlink(filePath);
+        console.log(`Cleaned up temporary file: ${file}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error cleaning up temporary files:', error);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,16 +63,17 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_'); // Sanitize filename
-    const uniqueFilename = `${Date.now()}_${filename}`;
-
-    // Ensure upload directory exists
-    const uploadDir = path.join(process.cwd(), 'public/uploads');
+    // Create a temporary filename with user ID and random string to avoid conflicts
+    const uniqueFilename = `temp_${userId}_${Date.now()}_${randomBytes(8).toString('hex')}_${filename}`;
+    
+    // Use a temporary uploads directory
+    const uploadDir = path.join(process.cwd(), 'public/temp_uploads');
     try {
       await mkdir(uploadDir, { recursive: true });
       // Check if directory is writable
       await access(uploadDir);
     } catch (e) {
-      console.error('Error creating/accessing upload directory:', e);
+      console.error('Error creating/accessing temp upload directory:', e);
       return NextResponse.json({ success: false, error: 'Upload directory error. Please contact administrator.' }, { status: 500 });
     }
 
@@ -60,19 +85,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to save file. Check disk space and permissions.' }, { status: 500 });
     }
 
-    // Public URL path
-    const publicPath = `/uploads/${uniqueFilename}`;
-
-    const upload = await prisma.uploadedFile.create({
-      data: {
-        filename: filename, // Store original name (sanitized)
-        filepath: publicPath,
-        fileType: fileType,
-        uploadedBy: userId
-      }
+    // Clean up old temporary files (run cleanup in the background)
+    cleanupTempFiles(60).catch(error => {
+      console.error('Background temp file cleanup failed:', error);
     });
 
-    return NextResponse.json({ success: true, data: upload });
+    // Return the temporary file path for immediate use
+    const publicPath = `/temp_uploads/${uniqueFilename}`;
+    
+    return NextResponse.json({ 
+      success: true, 
+      data: { 
+        tempPath: publicPath,
+        filename: filename,
+        fileType: file.type
+      } 
+    });
 
   } catch (error) {
     console.error('Upload error:', error);
@@ -84,24 +112,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// GET route is no longer needed for temporary files
 export async function GET(request: NextRequest) {
-  try {
-    const token = (await cookies()).get('auth_token')?.value;
-    if (!token) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
-    }
-
-    const uploads = await prisma.uploadedFile.findMany({
-      where: { uploadedBy: payload.userId },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    return NextResponse.json({ success: true, data: uploads });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
-  }
+  return NextResponse.json({ success: false, error: 'GET not supported for temporary uploads' }, { status: 405 });
 }

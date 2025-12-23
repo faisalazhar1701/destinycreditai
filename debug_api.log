@@ -176,3 +176,37 @@
 [2025-12-21T22:17:20.970Z] Saving letter to database...
 [2025-12-21T22:17:21.296Z] Letter saved successfully (took 325ms)
 [2025-12-21T22:17:21.298Z] --- Letter Generation Request Ended ---
+[2025-12-23T10:57:48.413Z] --- Letter Generation Request Started ---
+[2025-12-23T10:57:48.423Z] Initializing OpenAI client...
+[2025-12-23T10:57:48.446Z] User authenticated: 03d1919e-aae4-43a6-9b84-f17e30f6b060
+[2025-12-23T10:57:48.459Z] Request body parsed successfully
+[2025-12-23T10:57:48.461Z] Fetching prompts from database...
+[2025-12-23T10:57:49.262Z] Found 13 prompts (took 802ms)
+[2025-12-23T10:57:49.263Z] Sending request to OpenAI...
+[2025-12-23T10:57:56.049Z] CRITICAL: Letter generation error: Error: 429 Request too large for gpt-4o in organization org-3Otx8V1nQC7RpIMSdBfFPHx9 on tokens per min (TPM): Limit 30000, Requested 44911. The input or output tokens must be reduced in order to run successfully. Visit https://platform.openai.com/account/rate-limits to learn more.
+[2025-12-23T10:57:56.050Z] Stack trace: Error: 429 Request too large for gpt-4o in organization org-3Otx8V1nQC7RpIMSdBfFPHx9 on tokens per min (TPM): Limit 30000, Requested 44911. The input or output tokens must be reduced in order to run successfully. Visit https://platform.openai.com/account/rate-limits to learn more.
+    at APIError.generate (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\node_modules_openai_9a701d8b._.js:824:20)
+    at OpenAI.makeStatusError (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\node_modules_openai_9a701d8b._.js:1855:159)
+    at OpenAI.makeRequest (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\node_modules_openai_9a701d8b._.js:1906:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\[root-of-the-server]__12046f1a._.js:393:28)
+    at async AppRouteRouteModule.do (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:37789)
+    at async AppRouteRouteModule.handle (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:45045)
+    at async responseGenerator (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\node_modules_next_671a732e._.js:15485:38)
+    at async AppRouteRouteModule.handleResponse (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:187851)
+    at async handleResponse (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\node_modules_next_671a732e._.js:15547:32)
+    at async handler (D:\Faisal Azhar\DestinyCreditAI\.next\dev\server\chunks\node_modules_next_671a732e._.js:15600:13)
+    at async DevServer.renderToResponseWithComponentsImpl (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\base-server.js:1413:9)
+    at async DevServer.renderPageComponent (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\base-server.js:1465:24)
+    at async DevServer.renderToResponseImpl (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\base-server.js:1515:32)
+    at async DevServer.pipeImpl (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\base-server.js:1021:25)
+    at async NextNodeServer.handleCatchallRenderRequest (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\next-server.js:394:17)
+    at async DevServer.handleRequestImpl (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\base-server.js:912:17)
+    at async D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\dev\next-dev-server.js:382:20
+    at async Span.traceAsyncFn (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\dev\next-dev-server.js:378:24)
+    at async invokeRender (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\lib\router-server.js:240:21)
+    at async handleRequest (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\lib\router-server.js:436:24)
+    at async requestHandlerImpl (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\lib\router-server.js:484:13)
+    at async Server.requestListener (D:\Faisal Azhar\DestinyCreditAI\node_modules\next\dist\server\lib\start-server.js:226:13)
+[2025-12-23T10:57:56.052Z] --- Letter Generation Request Ended ---

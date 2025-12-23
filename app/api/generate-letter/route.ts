@@ -3,9 +3,10 @@ import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
-import { readFile, appendFile } from 'fs/promises';
+import { readFile, unlink } from 'fs/promises';
 import { appendFileSync } from 'fs';
 import path from 'path';
+import { deleteTempFile } from '@/lib/tempFileUtils';
 
 const DEBUG_LOG = path.join(process.cwd(), 'debug_api.log');
 function logDebug(msg: string) {
@@ -68,8 +69,8 @@ export async function POST(request: NextRequest) {
       disputeReason,
       bureau,
       letterType,
-      documentIds,
-      documentContent, // Optional direct content
+      documentContent, // Direct content from temporary files
+      documentPaths, // Temporary file paths to be cleaned up
       fullSystemPrompt // Optional override
     } = body;
 
@@ -100,81 +101,27 @@ export async function POST(request: NextRequest) {
     - Emphasize educational purpose only
     - Include verification language only`;
 
-    const constructedSystemPrompt = `${systemPrompt}\n\n${compliancePrompt}\n\n${typeSpecificPrompt}`;
+    const constructedSystemPrompt = `${systemPrompt}
+
+${compliancePrompt}
+
+${typeSpecificPrompt}`;
     const finalSystemPrompt = fullSystemPrompt || constructedSystemPrompt;
 
-    // Fetch document content if document IDs are provided
-    let documentAnalysis = '';
-    // Check for document IDs
-    if (documentIds && documentIds.length > 0) {
-      logDebug(`Processing ${documentIds.length} documents...`);
-      const startDocs = Date.now();
-      const documents = await prisma.uploadedFile.findMany({
-        where: { id: { in: documentIds } },
-        include: { user: true }
-      });
-
-      if (documents.length > 0) {
-        documentAnalysis = `\n\nUPLOADED DOCUMENTS CONTENT:\n`;
-
-        for (const [index, doc] of documents.entries()) {
-          try {
-            const startDoc = Date.now();
-            logDebug(`Reading document ${index + 1}: ${doc.filename}`);
-            documentAnalysis += `\n--- Document ${index + 1}: ${doc.filename} (${doc.fileType}) ---\n`;
-
-            // Read file content if it exists
-            const filePath = path.join(process.cwd(), 'public', doc.filepath);
-            try {
-              const fileBuffer = await readFile(filePath);
-
-              if (doc.fileType === 'application/pdf' || doc.filename.toLowerCase().endsWith('.pdf')) {
-                logDebug(`Parsing PDF: ${doc.filename}`);
-                // Safely load pdf-parse only when needed
-                if (!pdf) {
-                  try {
-                    logDebug('Requiring pdf-parse...');
-                    pdf = require('pdf-parse');
-                    logDebug('pdf-parse loaded successfully');
-                  } catch (pdfError) {
-                    logDebug(`Failed to load pdf-parse: ${pdfError}`);
-                    throw new Error('PDF processing library not available. Please contact support.');
-                  }
-                }
-                const pdfData = await pdf(fileBuffer);
-                logDebug(`PDF parsed successfully, length: ${pdfData.text.length} (took ${Date.now() - startDoc}ms)`);
-                // Limit text length to avoid token limits
-                documentAnalysis += pdfData.text.substring(0, 5000);
-                if (pdfData.text.length > 5000) documentAnalysis += '\n...[Content Truncated]...';
-              } else if (doc.fileType.startsWith('image/')) {
-                documentAnalysis += '[Image content - OCR not available using text-only model. User has attached this image as reference.]';
-              } else {
-                // Try to read as text
-                documentAnalysis += fileBuffer.toString('utf-8').substring(0, 5000);
-              }
-            } catch (fsError) {
-              console.error(`Error reading file ${filePath}:`, fsError);
-              documentAnalysis += '[Error reading file content]';
-            }
-          } catch (e) {
-            console.error(`Error processing document ${doc.id}:`, e);
-          }
-        }
-
-        documentAnalysis += `\n\nINSTRUCTION: Analyze the above document content (if available) to identify:\n`;
-        documentAnalysis += `- Any missing information that should be present\n`;
-        documentAnalysis += `- Inconsistent information across documents\n`;
-        documentAnalysis += `- Potential inaccuracies that may need verification\n`;
-        documentAnalysis += `- Account details that may be incomplete or incorrect\n`;
-        documentAnalysis += `\nUse this analysis to create a more informed educational letter that references specific items from the documents when appropriate.`;
-        logDebug(`Document processing finished (total took ${Date.now() - startDocs}ms)`);
-      }
-    }
-
     // Use provided document content if available
+    let documentAnalysis = '';
     if (documentContent) {
-      documentAnalysis += `\n\nDOCUMENT CONTENT ANALYSIS:\n${documentContent}\n`;
-      documentAnalysis += `\nPlease review the above document content and identify any missing, inconsistent, or potentially inaccurate information that should be addressed in the educational letter.`;
+      documentAnalysis = `
+
+UPLOADED DOCUMENTS CONTENT:
+${documentContent}
+`;
+      documentAnalysis += `\n\nINSTRUCTION: Analyze the above document content to identify:\n`;
+      documentAnalysis += `- Any missing information that should be present\n`;
+      documentAnalysis += `- Inconsistent information across documents\n`;
+      documentAnalysis += `- Potential inaccuracies that may need verification\n`;
+      documentAnalysis += `- Account details that may be incomplete or incorrect\n`;
+      documentAnalysis += `\nUse this analysis to create a more informed educational letter that references specific items from the documents when appropriate.`;
     }
 
     const userPrompt = `Create a credit ${letterType} letter with these details:
@@ -239,6 +186,19 @@ export async function POST(request: NextRequest) {
       }
     });
     logDebug(`Letter saved successfully (took ${Date.now() - startSave}ms)`);
+
+    // Clean up temporary files after processing
+    if (documentPaths && Array.isArray(documentPaths)) {
+      for (const tempPath of documentPaths) {
+        try {
+          await deleteTempFile(tempPath);
+          logDebug(`Temporary file cleaned up: ${tempPath}`);
+        } catch (cleanupError) {
+          console.error(`Error cleaning up temporary file ${tempPath}:`, cleanupError);
+          // Don't fail the request if cleanup fails
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

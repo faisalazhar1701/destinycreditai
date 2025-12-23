@@ -328,7 +328,7 @@ export default function AdminPanel() {
     { id: 'resources', name: '🔗 Resource Links' },
     { id: 'credit-videos', name: '🎥 Credit Videos' },
     { id: 'guidance-video', name: '📺 Guidance Video' },
-    { id: 'uploads', name: '📁 Uploaded Files' },
+    // { id: 'uploads', name: '📁 Uploaded Files' },
     { id: 'activity', name: '📈 System Activity' },
   ];
 
