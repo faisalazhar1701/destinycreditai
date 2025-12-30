@@ -8,19 +8,18 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
+  id        String           @id @default(uuid())
   name      String?
-  email     String   @unique
-  password  String?   // Added for auth
-  role      Role     @default(USER)
-  active    Boolean  @default(true)
+  email     String           @unique
+  password  String?
+  role      Role             @default(USER)
+  active    Boolean          @default(true)
   lastLogin DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  letters        CreditLetter[]
-  followUps      FollowUpLetter[]
-  uploads        UploadedFile[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  letters   CreditLetter[]
+  followUps FollowUpLetter[]
+  uploads   UploadedFile[]
 }
 
 model CreditLetter {
@@ -33,25 +32,23 @@ model CreditLetter {
   tone          String
   content       String
   createdAt     DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model FollowUpLetter {
   id        String   @id @default(uuid())
   userId    String
-  day       Int      // 15, 30, 45
+  day       Int
   content   String
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Workflow {
   id        String   @id @default(uuid())
   name      String
   steps     Json
-  enabled   Boolean @default(true)
+  enabled   Boolean  @default(true)
   createdAt DateTime @default(now())
 }
 
@@ -62,8 +59,7 @@ model UploadedFile {
   fileType   String
   uploadedBy String
   createdAt  DateTime @default(now())
-
-  user User @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
 }
 
 model AIPrompt {
@@ -72,8 +68,6 @@ model AIPrompt {
   content String
   enabled Boolean @default(true)
 }
-
-
 
 model Disclaimer {
   id      String  @id @default(uuid())
@@ -86,14 +80,9 @@ model ResourceLink {
   id          String  @id @default(uuid())
   title       String
   url         String
-  type        String  @default("EXTERNAL") // VIDEO, EXTERNAL, COMMUNITY
+  type        String  @default("EXTERNAL")
   description String?
   visible     Boolean @default(true)
-}
-
-enum Role {
-  ADMIN
-  USER
 }
 
 model FeatureToggle {
@@ -106,3 +95,15 @@ model FeatureToggle {
   @@map("feature_toggles")
 }
 
+model LetterTemplate {
+  id         String  @id
+  category   String
+  content    String
+  disclaimer String?
+  enabled    Boolean @default(true)
+}
+
+enum Role {
+  ADMIN
+  USER
+}
