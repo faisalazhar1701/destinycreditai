@@ -24,7 +24,7 @@ export default function RootLayout({
             <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4 sm:gap-0 sm:h-16 py-4 sm:py-0">
               <Link href="/" className="flex items-center gap-2">
                 <Image
-                  src="/logo.jpg"
+                  src="/1766441989810_logo.jpg"
                   alt="Destiny Credit AI"
                   width={120}
                   height={40}
