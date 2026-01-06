@@ -5,12 +5,9 @@ import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@/lib/inviteEmail'; // Helper function for sending invite emails
 
-// Product to plan mapping - internal mapping to prevent Zapier from sending wrong data
-// This is a security measure to ensure only valid plans are assigned
-const PRODUCT_PLAN_MAPPING: Record<string, string> = {
-  'DCA_MONTHLY': 'MONTHLY',
-  'DCA_ANNUAL': 'ANNUAL',
-};
+// No product mapping needed - Zapier sends the plan directly
+// Plans are validated to be either MONTHLY or ANNUAL
+
 
 /**
  * POST /api/zapier/create-user
@@ -24,7 +21,7 @@ const PRODUCT_PLAN_MAPPING: Record<string, string> = {
  *   "email": "user@email.com",
  *   "first_name": "John",
  *   "last_name": "Doe",
- *   "product_id": "DCA_MONTHLY"
+ *   "plan": "MONTHLY" or "ANNUAL"
  * }
  */
 export async function POST(request: Request) {
@@ -76,22 +73,22 @@ export async function POST(request: Request) {
     const email = body.email || body.Email;
     const firstName = body.firstName || body.first_name || body.FirstName;
     const lastName = body.lastName || body.last_name || body.LastName;
-    const product_id = body.product_id || body.productId || body.ProductId;
+    const plan = body.plan || body.Plan;
 
     // Validate required fields
-    if (!email || !firstName || !lastName || !product_id) {
+    if (!email || !firstName || !lastName || !plan) {
       console.log('❌ Missing required fields:', {
         email: !!email,
         firstName: !!firstName,
         lastName: !!lastName,
-        product_id: !!product_id
+        plan: !!plan
       });
       
       const missingFields = [];
       if (!email) missingFields.push('email');
       if (!firstName) missingFields.push('firstName');
       if (!lastName) missingFields.push('lastName');
-      if (!product_id) missingFields.push('product_id');
+      if (!plan) missingFields.push('plan');
       
       return NextResponse.json(
         { error: `Missing required fields: ${missingFields.join(', ')}` },
@@ -109,12 +106,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Map product_id to internal plan (security: don't trust Zapier input)
-    const plan = PRODUCT_PLAN_MAPPING[product_id];
-    if (!plan) {
-      console.log('❌ Invalid product_id:', product_id);
+    // 3. Validate plan (must be MONTHLY or ANNUAL)
+    if (plan !== 'MONTHLY' && plan !== 'ANNUAL') {
+      console.log('❌ Invalid plan:', plan);
       return NextResponse.json(
-        { error: 'Invalid product_id' },
+        { error: 'Invalid plan - must be MONTHLY or ANNUAL' },
         { status: 400 }
       );
     }
@@ -167,7 +163,7 @@ export async function POST(request: Request) {
         } catch (error: any) {
           // Handle Prisma errors safely - if user already exists, return 200 (idempotent)
           if (error.code === 'P2002') { // Unique constraint violation
-            console.log('✅ User already exists with different email', email);
+            console.log('✅ User already exists with email', email);
             return NextResponse.json({
               message: 'User already exists',
               user: { id: existingUser.id, email: existingUser.email }
