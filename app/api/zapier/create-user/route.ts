@@ -133,10 +133,22 @@ export async function POST(request: Request) {
       existingUser = await prisma.user.findUnique({
         where: { email },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error finding user:', error);
+      
+      // More detailed error reporting for debugging
+      console.error('Prisma find error details:', {
+        code: error.code,
+        meta: error.meta,
+        message: error.message
+      });
+      
       return NextResponse.json(
-        { error: 'Database error occurred while finding user' },
+        { 
+          error: 'Database error occurred while finding user',
+          details: error.code ? `Error code: ${error.code}` : 'Unknown database error',
+          message: error.message
+        },
         { status: 400 }
       );
     }
@@ -173,6 +185,8 @@ export async function POST(request: Request) {
             } as any,
           });
         } catch (error: any) {
+          console.error('❌ Error updating user:', error);
+          
           // Handle Prisma errors safely - if user already exists, return 200 (idempotent)
           if (error.code === 'P2002') { // Unique constraint violation
             console.log('✅ User already exists with email', email);
@@ -181,9 +195,20 @@ export async function POST(request: Request) {
               user: { id: existingUser.id, email: existingUser.email }
             });
           }
-          console.error('❌ Error updating user:', error);
+          
+          // More detailed error reporting for debugging
+          console.error('Prisma update error details:', {
+            code: error.code,
+            meta: error.meta,
+            message: error.message
+          });
+          
           return NextResponse.json(
-            { error: 'Database error occurred while updating user' },
+            { 
+              error: 'Database error occurred while updating user',
+              details: error.code ? `Error code: ${error.code}` : 'Unknown database error',
+              message: error.message
+            },
             { status: 400 }
           );
         }
@@ -230,6 +255,8 @@ export async function POST(request: Request) {
         } as any,
       });
     } catch (error: any) {
+      console.error('❌ Error creating user:', error);
+      
       // Handle Prisma errors safely - if user already exists, return 200 (idempotent)
       if (error.code === 'P2002') { // Unique constraint violation
         console.log('✅ User already exists with email:', email);
@@ -242,9 +269,20 @@ export async function POST(request: Request) {
           user: { id: existingUser?.id, email: existingUser?.email }
         });
       }
-      console.error('❌ Error creating user:', error);
+      
+      // More detailed error reporting for debugging
+      console.error('Prisma error details:', {
+        code: error.code,
+        meta: error.meta,
+        message: error.message
+      });
+      
       return NextResponse.json(
-        { error: 'Database error occurred while creating user' },
+        { 
+          error: 'Database error occurred while creating user',
+          details: error.code ? `Error code: ${error.code}` : 'Unknown database error',
+          message: error.message
+        },
         { status: 400 }
       );
     }
