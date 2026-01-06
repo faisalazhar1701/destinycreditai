@@ -10,6 +10,8 @@ import { NextResponse } from 'next/server';
  * 
  * This endpoint now returns an error to prevent free signup
  */
+//added the comment for testing and dummy code to deploy on vercel.
+
 export async function POST(request: Request) {
     console.log('🚫 Blocked signup attempt - public signup disabled');
     
