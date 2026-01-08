@@ -18,7 +18,7 @@ export async function sendInviteEmail(data: InviteEmailData): Promise<void> {
   const { email, firstName, token } = data;
   
   // Build the invite link using the frontend URL from environment
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
   const inviteLink = `${frontendUrl}/set-password?token=${token}`;
   
   // In a production environment, you would use an email service like:
