@@ -45,14 +45,37 @@ export async function POST(request: Request) {
     console.log('🔍 Looking for user with token:', token);
     
     // Find user by invite token
-    // Using type assertion since the Prisma client types may need refresh
     const user = await prisma.user.findFirst({
       where: {
         inviteToken: token,
       },
     });
     
-    console.log('🔍 Found user:', user ? user.email : 'NULL');
+    if (user) {
+      console.log('🔍 Found user:', user.email, 'with stored token:', user.inviteToken);
+    } else {
+      console.log('🔍 No user found with token:', token);
+      
+      // Debug: Check if any users have invite tokens
+      const allUsersWithTokens = await prisma.user.findMany({
+        where: {
+          inviteToken: { not: null },
+        },
+        select: {
+          email: true,
+          inviteToken: true,
+          inviteExpiresAt: true,
+        },
+      });
+      
+      console.log('🔍 Users with invite tokens in DB:', allUsersWithTokens.map((u: any) => ({
+        email: u.email,
+        tokenLength: u.inviteToken?.length,
+        tokenPrefix: u.inviteToken?.substring(0, 10),
+        expiresAt: u.inviteExpiresAt,
+        isExpired: u.inviteExpiresAt && new Date(u.inviteExpiresAt) < new Date()
+      })));
+    }
     
     if (!user) {
       console.log('❌ Invalid or expired token');
