@@ -171,6 +171,11 @@ export async function POST(request: Request) {
         const newInviteToken = crypto.randomBytes(32).toString('hex');
         const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
         const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
+        
+        // Generate and show the invite link in console
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const inviteLink = `${frontendUrl}/set-password?token=${newInviteToken}`;
+        console.log('📋 Invite link for user:', inviteLink);
 
         let updatedUser;
         try {
@@ -237,6 +242,11 @@ export async function POST(request: Request) {
     const inviteToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
     const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
+    
+    // Generate and show the invite link in console
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
+    console.log('📋 Invite link for user:', inviteLink);
 
     const fullName = `${firstName} ${lastName}`.trim();
 
