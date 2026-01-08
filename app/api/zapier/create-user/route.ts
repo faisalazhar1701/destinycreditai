@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@/lib/inviteEmail'; // Helper function for sending invite emails
 
-// No product mapping needed - Zapier sends the plan directly
-// Plans are validated to be either MONTHLY or ANNUAL
+// Zapier sends product name and product ID directly
+// Both productName and productId are required fields
 
 
 /**
@@ -21,7 +21,8 @@ import { sendInviteEmail } from '@/lib/inviteEmail'; // Helper function for send
  *   "email": "user@email.com",
  *   "first_name": "John",
  *   "last_name": "Doe",
- *   "plan": "MONTHLY" or "ANNUAL"
+ *   "productName": "Product Name",
+ *   "productId": "Product ID"
  * }
  */
 export async function POST(request: Request) {
@@ -73,22 +74,25 @@ export async function POST(request: Request) {
     let email = body.email || body.Email;
     const firstName = body.firstName || body.first_name || body.FirstName;
     const lastName = body.lastName || body.last_name || body.LastName;
-    const plan = body.plan || body.Plan;
+    const productName = body.productName || body.ProductName;
+    const productId = body.productId || body.ProductId;
 
     // Validate required fields
-    if (!email || !firstName || !lastName || !plan) {
+    if (!email || !firstName || !lastName || !productName || !productId) {
       console.log('❌ Missing required fields:', {
         email: !!email,
         firstName: !!firstName,
         lastName: !!lastName,
-        plan: !!plan
+        productName: !!productName,
+        productId: !!productId
       });
       
       const missingFields = [];
       if (!email) missingFields.push('email');
       if (!firstName) missingFields.push('firstName');
       if (!lastName) missingFields.push('lastName');
-      if (!plan) missingFields.push('plan');
+      if (!productName) missingFields.push('productName');
+      if (!productId) missingFields.push('productId');
       
       return NextResponse.json(
         { error: `Missing required fields: ${missingFields.join(', ')}` },
@@ -118,14 +122,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Validate plan (must be MONTHLY or ANNUAL)
-    if (plan !== 'MONTHLY' && plan !== 'ANNUAL') {
-      console.log('❌ Invalid plan:', plan);
+    // 3. Validate product fields
+    if (!productName || typeof productName !== 'string' || productName.trim() === '') {
+      console.log('❌ Invalid productName:', productName);
       return NextResponse.json(
-        { error: 'Invalid plan - must be MONTHLY or ANNUAL' },
+        { error: 'Invalid product name' },
         { status: 400 }
       );
     }
+    
+    if (!productId || typeof productId !== 'string' || productId.trim() === '') {
+      console.log('❌ Invalid productId:', productId);
+      return NextResponse.json(
+        { error: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
 
     // 4. Check if user already exists
     let existingUser;
@@ -182,7 +195,8 @@ export async function POST(request: Request) {
           updatedUser = await prisma.user.update({
             where: { email },
             data: {
-              plan: plan as any, // Type assertion since Prisma enum matches
+              productName: productName as string, // Store product name
+              productId: productId as string, // Store product ID
               active: false, // User is not active until they set password
               status: 'INVITED', // Set status to invited
               inviteToken: newInviteToken, // Store the invite token
@@ -261,7 +275,8 @@ export async function POST(request: Request) {
         data: {
           email,
           name: fullName,
-          plan: plan as any, // Type assertion since Prisma enum matches
+          productName: productName as string, // Store product name
+          productId: productId as string, // Store product ID
           active: false, // User starts as inactive (no password yet)
           status: 'INVITED', // User starts as invited (no password yet)
           inviteToken, // Store the invite token
