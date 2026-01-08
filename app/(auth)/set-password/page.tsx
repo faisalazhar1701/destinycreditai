@@ -2,9 +2,6 @@
 
 export const dynamic = 'force-dynamic';
 
-// Prevent Next.js from attempting to prerender this page during build
-export const revalidate = 0;
-
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
