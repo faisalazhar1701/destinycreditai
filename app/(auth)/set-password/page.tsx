@@ -14,7 +14,7 @@ export default function SetPasswordPage() {
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     const [token, setToken] = useState<string | null>(null);
-    
+    //test
     const searchParams = useSearchParams();
     const router = useRouter();
 
