@@ -187,16 +187,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Additional security check: Ensure user has a valid plan if the field exists
-    // Using type assertion to safely access plan field that might not exist in all databases
-    const userWithPlan = fullUser as any;
-    if (userWithPlan.plan === null || userWithPlan.plan === undefined) {
-      console.log('❌ User has no plan assigned:', email);
-      return NextResponse.json(
-        { error: 'Account not properly configured - no plan assigned' },
-        { status: 401 }
-      );
-    }
+
 
     // Guard: User must be active
     if (!fullUser.active) {
@@ -279,8 +270,7 @@ export async function POST(request: Request) {
           userId: fullUser.id,
           email: fullUser.email,
           role: fullUser.role,
-          plan: (fullUser as any)?.plan || (fullUser.name?.includes('(monthly)') ? 'MONTHLY' : fullUser.name?.includes('(annual)') ? 'ANNUAL' : null), // Include plan information
-          hasValidSubscription: !!(fullUser as any).plan, // For USER role, check if plan exists
+          hasValidSubscription: true, // All users now have valid subscription by default since plan check was removed
         },
         jwtSecret,
         { expiresIn: '7d' }
@@ -307,8 +297,7 @@ export async function POST(request: Request) {
         email: fullUser.email,
         name: fullUser.name,
         role: fullUser.role,
-        plan: (fullUser as any)?.plan || (fullUser.name?.includes('(monthly)') ? 'MONTHLY' : fullUser.name?.includes('(annual)') ? 'ANNUAL' : null), // Include plan information
-        hasValidSubscription: !!(fullUser as any).plan, // For USER role, check if plan exists
+        hasValidSubscription: true // All users now have valid subscription by default since plan check was removed
       },
     });
 
