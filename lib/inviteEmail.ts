@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 /**
  * Helper function to send invite emails to new users
  * This function handles the email sending logic for user invitations
@@ -41,12 +43,37 @@ This link will expire in 24 hours.
 Best regards,
 The DestinyCreditAI Team`);
   
-  // For production, implement with your email service (Resend, SendGrid, etc.)
-  // For now, we'll simulate email sending
-  console.log(`Invite email would be sent to: ${email}`);
+  // Use nodemailer to send email via Mailtrap for testing
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
+    port: parseInt(process.env.SMTP_PORT || '2525'),
+    auth: {
+      user: process.env.SMTP_USER || '21a3741be42aed',
+      pass: process.env.SMTP_PASS || 'a4d519e45136ad'
+    }
+  });
   
-  // Simulate a potential delay for email processing
-  await new Promise(resolve => setTimeout(resolve, 100));
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || 'onboarding@destinycreditai.com',
+    to: email,
+    subject: 'Welcome to DestinyCreditAI - Set Your Password',
+    html: `
+      <h1>Welcome to DestinyCreditAI!</h1>
+      <p>Hello ${firstName},</p>
+      <p>Click the link below to set your password and activate your account:</p>
+      <a href="${inviteLink}">Set Your Password</a>
+      <p>This link will expire in 24 hours.</p>
+      <p>Best regards,<br>The DestinyCreditAI Team</p>
+    `
+  };
+  
+  try {
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Invite email sent successfully:', result.messageId);
+  } catch (error) {
+    console.error('Failed to send invite email:', error);
+    throw error;
+  }
   
   return Promise.resolve();
 }
