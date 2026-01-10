@@ -32,15 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate password strength (at least 8 chars, 1 uppercase, 1 lowercase, 1 number)
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      console.log('❌ Password does not meet requirements');
-      return NextResponse.json(
-        { error: 'Password must be at least 8 characters with uppercase, lowercase, and number' },
-        { status: 400 }
-      );
-    }
+    // No password validation - accept any string as password
 
     // URL decode the token in case it was encoded during transmission
     const decodedToken = decodeURIComponent(token);

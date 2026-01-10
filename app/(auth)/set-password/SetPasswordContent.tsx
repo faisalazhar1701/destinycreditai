@@ -35,12 +35,7 @@ export default function SetPasswordContent() {
             return;
         }
 
-        // Validate password strength
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-        if (!passwordRegex.test(password)) {
-            setError('Password must be at least 8 characters with uppercase, lowercase, and number');
-            return;
-        }
+        // No password validation - accept any string as password
 
         if (!token) {
             setError('Missing token. Please use the link from your email.');
