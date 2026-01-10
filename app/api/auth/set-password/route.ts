@@ -42,19 +42,38 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('🔍 Looking for user with token:', token);
+    // URL decode the token in case it was encoded during transmission
+    const decodedToken = decodeURIComponent(token);
+    console.log('🔍 Looking for user with token:', decodedToken);
     
     // Find user by invite token
     const user = await prisma.user.findFirst({
       where: {
-        inviteToken: token,
+        inviteToken: decodedToken,
       },
     });
     
     if (user) {
       console.log('🔍 Found user:', user.email, 'with stored token:', user.inviteToken);
     } else {
-      console.log('🔍 No user found with token:', token);
+      console.log('🔍 No user found with token:', decodedToken);
+      
+      // Also try with the original token in case there was an encoding issue
+      if (decodedToken !== token) {
+        const userWithOriginalToken = await prisma.user.findFirst({
+          where: {
+            inviteToken: token,
+          },
+        });
+        
+        if (userWithOriginalToken) {
+          console.log('🔍 Found user with original token (before decoding):', userWithOriginalToken.email);
+          return NextResponse.json(
+            { error: 'Token validation issue - please try the link from your email again' },
+            { status: 400 }
+          );
+        }
+      }
       
       // Debug: Check if any users have invite tokens
       const allUsersWithTokens = await prisma.user.findMany({
@@ -80,7 +99,7 @@ export async function POST(request: Request) {
     if (!user) {
       console.log('❌ Invalid or expired token');
       
-      // Check if token exists in another format (e.g., trimmed or different encoding)
+      // Check if token exists in another format (e.g., trimmed, encoded, or different encoding)
       const allUsers = await prisma.user.findMany({
         where: {
           inviteToken: { not: null },
@@ -94,7 +113,9 @@ export async function POST(request: Request) {
       
       const matchingToken = allUsers.find((u: any) => 
         u.inviteToken === token || 
-        u.inviteToken?.trim() === token.trim()
+        u.inviteToken === decodedToken ||
+        u.inviteToken?.trim() === token.trim() ||
+        u.inviteToken?.trim() === decodedToken.trim()
       );
       
       if (matchingToken) {
