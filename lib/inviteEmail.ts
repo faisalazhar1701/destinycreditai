@@ -101,7 +101,7 @@ The DestinyCreditAI Team`);
 </head>
 <body>
   <div class="header">
-    <img src="https://www.destinycreditai.com/logo.png" alt="Destiny Credit AI Logo" class="logo">
+    <img src="${process.env.FRONTEND_URL || 'https://destinycreditai.com'}/logo.png" alt="Destiny Credit AI Logo" class="logo">
     <h1>Welcome to Destiny Credit AI 🎉</h1>
   </div>
   
