@@ -22,9 +22,12 @@ model User {
   productName     String?
   productId       String?
   status          UserStatus       @default(REGISTERED)
+  plan            String?
   letters         CreditLetter[]
   followUps       FollowUpLetter[]
   uploads         UploadedFile[]
+
+  @@index([inviteToken])
 }
 
 model CreditLetter {

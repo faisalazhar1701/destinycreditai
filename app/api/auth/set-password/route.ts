@@ -137,14 +137,14 @@ export async function POST(request: Request) {
     const hashedPassword = await hashPassword(password);
 
     // Update user: set password, activate account, clear token and mark as used
-    // Prepare update data with type assertion to handle the new field
+    // Mark the invite token as used and clear the token data
     const updateData: any = {
       password: hashedPassword,
       active: true, // User is now active
       status: 'ACTIVE', // Update status to active
       inviteToken: null, // Clear the invite token to prevent reuse
       inviteExpiresAt: null, // Clear expiry
-      inviteUsed: true, // Mark token as used
+      inviteUsed: true, // Mark token as used - this is the critical step that marks the token as consumed
     };
     
     const updatedUser = await prisma.user.update({

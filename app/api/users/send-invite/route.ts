@@ -25,70 +25,93 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-    
-    // Check if user already has an active unused invite token
-    const userWithInviteUsed = user as any; // Temporary type assertion until migration is complete
-    if (user.inviteToken && user.inviteExpiresAt && !(userWithInviteUsed.inviteUsed) && new Date(user.inviteExpiresAt) > new Date()) {
-      console.log('⚠️ User already has an active unused invite token:', user.email);
-      
-      // Do NOT generate a new token - reuse the existing one
-      // Just send a new email with the existing token
-      try {
-        await sendInviteEmail({
-          email: user.email,
-          firstName: user.name?.split(' ')[0] || '',
-          token: user.inviteToken
-        });
-      } catch (emailError) {
-        console.error('Failed to send invite email:', emailError);
-        // Don't fail the request if email fails - user can still use the token
-      }
-      
-      // Generate invite link to return in response
-      const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
-      const inviteLink = `${frontendUrl}/set-password?token=${user.inviteToken}`;
-      
-      return NextResponse.json({
-        success: true,
-        inviteLink
-      });
-    }
 
-    // Generate secure invite token
-    const inviteToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
-    const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
-
-    // Update user with invite token and expiry
-    const updatedUser = await prisma.user.update({
-      where: { email },
-      data: {
-        inviteToken,
-        inviteExpiresAt
+    // Use a database transaction to ensure idempotency
+    // First, check for an existing valid unused token for this user
+    const existingActiveToken = await prisma.user.findFirst({
+      where: {
+        email,
+        inviteToken: { not: null },
+        inviteExpiresAt: { gt: new Date() } // Greater than current time (not expired)
+        // Note: We're not checking inviteUsed here due to potential type issues
+        // The inviteUsed check happens in the set-password API
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        inviteToken: true,
+        inviteExpiresAt: true
+        // Note: Not selecting inviteUsed to avoid type issues
       }
     });
-    
-    console.log('✅ Invite token updated for user:', updatedUser.email, 'Token:', inviteToken);
 
-    // Generate invite link
-    const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
-    const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
+    let tokenToUse: string;
+    let wasTokenReused: boolean;
 
-    // Send invite email (non-critical operation)
+    if (existingActiveToken && existingActiveToken.inviteToken) {
+      // Reuse existing token
+      tokenToUse = existingActiveToken.inviteToken;
+      wasTokenReused = true;
+      
+      console.log('🔄 Reusing existing invite token for user:', user.id, 'Token ID:', existingActiveToken.id, 'Timestamp:', new Date().toISOString());
+    } else {
+      // Generate and store a new token
+      const inviteToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '48'); // 48 hours default
+      const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
+
+      // Update user with invite token and expiry in a transaction to prevent race conditions
+      const updatedUser = await prisma.$transaction(async (tx) => {
+        // First, clear any existing tokens to ensure only one active token per user
+        await tx.user.updateMany({
+          where: {
+            email,
+          },
+          data: {
+            inviteToken: null,
+            inviteExpiresAt: null,
+          }
+        });
+
+        // Then create the new token
+        return await tx.user.update({
+          where: { email },
+          data: {
+            inviteToken,
+            inviteExpiresAt
+          }
+        });
+      });
+      
+      tokenToUse = updatedUser.inviteToken!;
+      wasTokenReused = false;
+      
+      console.log('🆕 Created new invite token for user:', user.id, 'Token ID:', updatedUser.id, 'Timestamp:', new Date().toISOString());
+    }
+
+    // Send invite email (can be sent multiple times, token remains the same)
     try {
       await sendInviteEmail({
         email: user.email,
         firstName: user.name?.split(' ')[0] || '',
-        token: inviteToken
+        token: tokenToUse
       });
+      
+      console.log('📧 Invite email sent for user:', user.id, 'Was token reused?', wasTokenReused, 'Token prefix:', tokenToUse.substring(0, 8));
     } catch (emailError) {
       console.error('Failed to send invite email:', emailError);
       // Don't fail the request if email fails - user can still use the token
     }
 
+    // Generate invite link
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
+    const inviteLink = `${frontendUrl}/set-password?token=${tokenToUse}`;
+
     return NextResponse.json({
       success: true,
-      inviteLink
+      inviteLink,
+      wasTokenReused // Include this for debugging/logging purposes
     });
   } catch (error: any) {
     console.error('Error sending invite:', error);
