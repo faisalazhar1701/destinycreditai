@@ -141,69 +141,84 @@ export async function POST(request: Request) {
 
 
     // 4. Perform upsert operation with transaction to ensure concurrency safety
-    const result = await prisma.$transaction(async (tx) => {
-      // Find or create user
-      let user = await tx.user.findUnique({
-        where: { email },
-      });
+    let result;
+    try {
+      result = await prisma.$transaction(async (tx) => {
+        // Find or create user
+        let user = await tx.user.findUnique({
+          where: { email },
+        });
 
-      if (user) {
-        // User exists - check if invite has been sent already using inviteSentAt field
-        if (user.inviteSentAt !== null) {
-          // Invite already sent, return early to prevent duplicate emails
-          console.log('⏭️ User already exists and invite already sent – invite skipped:', email);
-          return { user, inviteAlreadySent: true };
+        if (user) {
+          // User exists - check if invite token has been generated (indicates invite was sent)
+          if (user.inviteToken !== null && user.inviteExpiresAt !== null && user.inviteExpiresAt > new Date()) {
+            // Invite likely already sent, return early to prevent duplicate emails
+            console.log('⏭️ User already exists with valid invite token – invite likely already sent:', email);
+            return { user, inviteAlreadySent: true };
+          } else {
+            // User exists but invite not sent yet or token expired, generate new token
+            const inviteToken = crypto.randomBytes(32).toString('hex');
+            const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
+            const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
+                  
+            user = await tx.user.update({
+              where: { email },
+              data: { 
+                inviteToken,
+                inviteExpiresAt
+              },
+            });
+            console.log('🔄 Updating existing user with new invite token:', email);
+            return { user, inviteAlreadySent: false };
+          }
         } else {
-          // User exists but invite not sent yet, update inviteSentAt before sending email
-          user = await tx.user.update({
-            where: { email },
-            data: { 
-              inviteSentAt: new Date()
+          // User doesn't exist, create new user
+          const inviteToken = crypto.randomBytes(32).toString('hex');
+          const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
+          const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
+                
+          // Generate and show the invite link in console
+          const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
+          const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
+          console.log('📋 Invite link for user:', inviteLink);
+        
+          const fullName = `${firstName} ${lastName}`.trim();
+                
+          user = await tx.user.create({
+            data: {
+              email,
+              name: fullName,
+              productName: productName as string, // Store product name
+              productId: productId as string, // Store product ID
+              active: false, // User starts as inactive (no password yet)
+              status: 'INVITED', // User starts as invited (no password yet)
+              inviteToken, // Store the invite token
+              inviteExpiresAt, // Store expiry time
+              // password remains null until user sets it
             },
           });
-          console.log('🔄 Updating existing user and marking invite as ready to send:', email);
+                
+          console.log('✅ Created new user with invite token:', email);
           return { user, inviteAlreadySent: false };
         }
+      });
+    } catch (error) {
+      // Handle potential database constraint errors during concurrent requests
+      console.error('Database error during user creation/update:', error);
+      
+      // Check if user was created by another request during the race condition
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        // User was created by another concurrent request, return appropriate response
+        console.log('⏭️ Race condition detected: User was created by another request');
+        // Check if the user has an active invite token to determine if email was sent
+        const hasActiveInvite = existingUser.inviteToken !== null && existingUser.inviteExpiresAt !== null && existingUser.inviteExpiresAt > new Date();
+        return { user: existingUser, inviteAlreadySent: hasActiveInvite };
       } else {
-        // User doesn't exist, create new user with inviteSentAt set to null initially
-        const inviteToken = crypto.randomBytes(32).toString('hex');
-        const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
-        const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
-        
-        // Generate and show the invite link in console
-        const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
-        const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
-        console.log('📋 Invite link for user:', inviteLink);
-
-        const fullName = `${firstName} ${lastName}`.trim();
-        
-        user = await tx.user.create({
-          data: {
-            email,
-            name: fullName,
-            productName: productName as string, // Store product name
-            productId: productId as string, // Store product ID
-            active: false, // User starts as inactive (no password yet)
-            status: 'INVITED', // User starts as invited (no password yet)
-            inviteToken, // Store the invite token
-            inviteExpiresAt, // Store expiry time
-            // inviteSentAt remains null initially, will be set to current timestamp right before sending email
-            // password remains null until user sets it
-          },
-        });
-        
-        // Now update the inviteSentAt field to current timestamp before sending email
-        user = await tx.user.update({
-          where: { email },
-          data: { 
-            inviteSentAt: new Date()
-          },
-        });
-        
-        console.log('✅ Created new user and marked invite as ready to send:', email);
-        return { user, inviteAlreadySent: false };
+        // Re-throw the error if it's not a race condition issue
+        throw error;
       }
-    });
+    }
 
     // Send invite email only if invite hasn't been sent yet
     if (!result.inviteAlreadySent) {
@@ -215,27 +230,11 @@ export async function POST(request: Request) {
         });
         console.log('📧 Invite email sent for user:', email);
         
-        // Update the inviteSentAt timestamp after successful email send
-        await prisma.user.update({
-          where: { email },
-          data: { 
-            inviteSentAt: new Date()
-          },
-        });
+        // No need to update inviteSentAt as it's handled by the token creation process
       } catch (emailError) {
         console.error('❌ Failed to send invite email:', emailError);
         // Don't fail the request if email fails - user can still use the token
-        // But still update inviteSentAt since we attempted to send
-        try {
-          await prisma.user.update({
-            where: { email },
-            data: { 
-              inviteSentAt: new Date()
-            },
-          });
-        } catch (updateError) {
-          console.error('❌ Failed to update inviteSentAt after email error:', updateError);
-        }
+        // No need to update inviteSentAt as it's handled by the token creation process
       }
     } else {
       // User already existed and invite was already sent
