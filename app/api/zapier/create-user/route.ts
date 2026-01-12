@@ -143,12 +143,12 @@ export async function POST(request: Request) {
     // 4. Perform upsert operation with transaction to ensure concurrency safety
     let result;
     try {
-      result = await prisma.$transaction(async (tx) => {
+      const transactionResult = await prisma.$transaction(async (tx) => {
         // Find or create user
         let user = await tx.user.findUnique({
           where: { email },
         });
-
+    
         if (user) {
           // User exists - check if invite token has been generated (indicates invite was sent)
           if (user.inviteToken !== null && user.inviteExpiresAt !== null && user.inviteExpiresAt > new Date()) {
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
             const inviteToken = crypto.randomBytes(32).toString('hex');
             const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
             const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
-                  
+                
             user = await tx.user.update({
               where: { email },
               data: { 
@@ -176,14 +176,14 @@ export async function POST(request: Request) {
           const inviteToken = crypto.randomBytes(32).toString('hex');
           const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
           const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
-                
+              
           // Generate and show the invite link in console
           const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
           const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
           console.log('📋 Invite link for user:', inviteLink);
-        
+    
           const fullName = `${firstName} ${lastName}`.trim();
-                
+              
           user = await tx.user.create({
             data: {
               email,
@@ -197,15 +197,18 @@ export async function POST(request: Request) {
               // password remains null until user sets it
             },
           });
-                
+              
           console.log('✅ Created new user with invite token:', email);
           return { user, inviteAlreadySent: false };
         }
       });
+          
+      // Assign the transaction result to the outer variable
+      result = transactionResult;
     } catch (error) {
       // Handle potential database constraint errors during concurrent requests
       console.error('Database error during user creation/update:', error);
-      
+          
       // Check if user was created by another request during the race condition
       const existingUser = await prisma.user.findUnique({ where: { email } });
       if (existingUser) {
@@ -213,7 +216,7 @@ export async function POST(request: Request) {
         console.log('⏭️ Race condition detected: User was created by another request');
         // Check if the user has an active invite token to determine if email was sent
         const hasActiveInvite = existingUser.inviteToken !== null && existingUser.inviteExpiresAt !== null && existingUser.inviteExpiresAt > new Date();
-        return { user: existingUser, inviteAlreadySent: hasActiveInvite };
+        result = { user: existingUser, inviteAlreadySent: hasActiveInvite };
       } else {
         // Re-throw the error if it's not a race condition issue
         throw error;
@@ -236,13 +239,7 @@ export async function POST(request: Request) {
         // Don't fail the request if email fails - user can still use the token
         // No need to update inviteSentAt as it's handled by the token creation process
       }
-    } else {
-      // User already existed and invite was already sent
-      return NextResponse.json({
-        message: 'User already exists and invite already sent',
-        user: { id: result.user.id, email: result.user.email }
-      });
-    }
+    } 
     
     // Define inviteToken and newUser for the response section below
     const inviteToken = result.user.inviteToken!;
@@ -253,11 +250,20 @@ export async function POST(request: Request) {
     const responseFrontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
     const responseInviteLink = `${responseFrontendUrl}/set-password?token=${inviteToken}`;
     
-    return NextResponse.json({
-      message: 'User created successfully',
-      user: { id: newUser.id, email: newUser.email },
-      inviteLink: responseInviteLink // Include the invite link in the response
-    });
+    // If invite was already sent, return appropriate message
+    if (result.inviteAlreadySent) {
+      return NextResponse.json({
+        message: 'User already exists and invite already sent',
+        user: { id: newUser.id, email: newUser.email },
+        inviteLink: responseInviteLink
+      });
+    } else {
+      return NextResponse.json({
+        message: 'User created successfully',
+        user: { id: newUser.id, email: newUser.email },
+        inviteLink: responseInviteLink // Include the invite link in the response
+      });
+    }
 
   } catch (error: any) {
     console.error('❌ Zapier webhook error:', error);
