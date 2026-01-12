@@ -23,6 +23,7 @@ model User {
   productId       String?
   status          UserStatus       @default(REGISTERED)
   plan            String?
+  inviteSentAt    DateTime?
   letters         CreditLetter[]
   followUps       FollowUpLetter[]
   uploads         UploadedFile[]

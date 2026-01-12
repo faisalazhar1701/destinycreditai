@@ -140,114 +140,114 @@ export async function POST(request: Request) {
     }
 
 
-    // 4. Check if user already exists
-    let existingUser;
-    try {
-      existingUser = await prisma.user.findUnique({
+    // 4. Perform upsert operation with transaction to ensure concurrency safety
+    const result = await prisma.$transaction(async (tx) => {
+      // Find or create user
+      let user = await tx.user.findUnique({
         where: { email },
       });
-    } catch (error: any) {
-      console.error('❌ Error finding user:', error);
-      
-      // More detailed error reporting for debugging
-      console.error('Prisma find error details:', {
-        code: error.code,
-        meta: error.meta,
-        message: error.message
-      });
-      
-      return NextResponse.json(
-        { 
-          error: 'Database error occurred while finding user',
-          details: error.code ? `Error code: ${error.code}` : 'Unknown database error',
-          message: error.message
-        },
-        { status: 400 }
-      );
-    }
 
-    if (existingUser) {
-      // If user already exists, return success without generating new invite or sending email
-      console.log('⏭️ User already exists – invite skipped:', email);
-      return NextResponse.json({
-        message: 'User already exists',
-        user: { id: existingUser.id, email: existingUser.email }
-      });
-    }
+      if (user) {
+        // User exists - check if invite has been sent already using inviteSentAt field
+        if (user.inviteSentAt !== null) {
+          // Invite already sent, return early to prevent duplicate emails
+          console.log('⏭️ User already exists and invite already sent – invite skipped:', email);
+          return { user, inviteAlreadySent: true };
+        } else {
+          // User exists but invite not sent yet, update inviteSentAt before sending email
+          user = await tx.user.update({
+            where: { email },
+            data: { 
+              inviteSentAt: new Date()
+            },
+          });
+          console.log('🔄 Updating existing user and marking invite as ready to send:', email);
+          return { user, inviteAlreadySent: false };
+        }
+      } else {
+        // User doesn't exist, create new user with inviteSentAt set to null initially
+        const inviteToken = crypto.randomBytes(32).toString('hex');
+        const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
+        const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
+        
+        // Generate and show the invite link in console
+        const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
+        const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
+        console.log('📋 Invite link for user:', inviteLink);
 
-    // 5. Create new user with invited status
-    // Generate secure invite token using crypto
-    const inviteToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiryHours = parseInt(process.env.INVITE_TOKEN_EXPIRY_HOURS || '24');
-    const inviteExpiresAt = new Date(Date.now() + tokenExpiryHours * 60 * 60 * 1000);
-    
-    // Generate and show the invite link in console
-    const frontendUrl = process.env.FRONTEND_URL || 'https://www.destinycreditai.com';
-    const inviteLink = `${frontendUrl}/set-password?token=${inviteToken}`;
-    console.log('📋 Invite link for user:', inviteLink);
-
-    const fullName = `${firstName} ${lastName}`.trim();
-
-    let newUser;
-    try {
-      newUser = await prisma.user.create({
-        data: {
-          email,
-          name: fullName,
-          productName: productName as string, // Store product name
-          productId: productId as string, // Store product ID
-          active: false, // User starts as inactive (no password yet)
-          status: 'INVITED', // User starts as invited (no password yet)
-          inviteToken, // Store the invite token
-          inviteExpiresAt, // Store expiry time
-          // password remains null until user sets it
-        } as any,
-      });
-    } catch (error: any) {
-      console.error('❌ Error creating user:', error);
-      
-      // Handle Prisma errors safely - if user already exists, return 200 (idempotent)
-      if (error.code === 'P2002') { // Unique constraint violation
-        console.log('✅ User already exists with email:', email);
-        // Find the existing user to return
-        const existingUser = await prisma.user.findUnique({
+        const fullName = `${firstName} ${lastName}`.trim();
+        
+        user = await tx.user.create({
+          data: {
+            email,
+            name: fullName,
+            productName: productName as string, // Store product name
+            productId: productId as string, // Store product ID
+            active: false, // User starts as inactive (no password yet)
+            status: 'INVITED', // User starts as invited (no password yet)
+            inviteToken, // Store the invite token
+            inviteExpiresAt, // Store expiry time
+            // inviteSentAt remains null initially, will be set to current timestamp right before sending email
+            // password remains null until user sets it
+          },
+        });
+        
+        // Now update the inviteSentAt field to current timestamp before sending email
+        user = await tx.user.update({
           where: { email },
+          data: { 
+            inviteSentAt: new Date()
+          },
         });
-        return NextResponse.json({
-          message: 'User already exists',
-          user: { id: existingUser?.id, email: existingUser?.email }
-        });
+        
+        console.log('✅ Created new user and marked invite as ready to send:', email);
+        return { user, inviteAlreadySent: false };
       }
-      
-      // More detailed error reporting for debugging
-      console.error('Prisma error details:', {
-        code: error.code,
-        meta: error.meta,
-        message: error.message
-      });
-      
-      return NextResponse.json(
-        { 
-          error: 'Database error occurred while creating user',
-          details: error.code ? `Error code: ${error.code}` : 'Unknown database error',
-          message: error.message
-        },
-        { status: 400 }
-      );
-    }
+    });
 
-    // Send invite email with secure link (only for new users)
-    try {
-      await sendInviteEmail({
-        email: newUser.email,
-        firstName: firstName,
-        token: inviteToken,
+    // Send invite email only if invite hasn't been sent yet
+    if (!result.inviteAlreadySent) {
+      try {
+        await sendInviteEmail({
+          email: result.user.email,
+          firstName: firstName,
+          token: result.user.inviteToken!,
+        });
+        console.log('📧 Invite email sent for user:', email);
+        
+        // Update the inviteSentAt timestamp after successful email send
+        await prisma.user.update({
+          where: { email },
+          data: { 
+            inviteSentAt: new Date()
+          },
+        });
+      } catch (emailError) {
+        console.error('❌ Failed to send invite email:', emailError);
+        // Don't fail the request if email fails - user can still use the token
+        // But still update inviteSentAt since we attempted to send
+        try {
+          await prisma.user.update({
+            where: { email },
+            data: { 
+              inviteSentAt: new Date()
+            },
+          });
+        } catch (updateError) {
+          console.error('❌ Failed to update inviteSentAt after email error:', updateError);
+        }
+      }
+    } else {
+      // User already existed and invite was already sent
+      return NextResponse.json({
+        message: 'User already exists and invite already sent',
+        user: { id: result.user.id, email: result.user.email }
       });
-      console.log('📧 New user created – invite sent:', email);
-    } catch (emailError) {
-      console.error('❌ Failed to send invite email:', emailError);
-      // Don't fail the request if email fails - user can still use the token
     }
+    
+    // Define inviteToken and newUser for the response section below
+    const inviteToken = result.user.inviteToken!;
+    const newUser = result.user;
 
     // 7. Return success response
     // Generate invite link to return in response
