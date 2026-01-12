@@ -60,9 +60,12 @@ export default function SetPasswordContent() {
 
             setSuccess(true);
             
-            // Redirect to login after a brief delay
+            // Set disclaimer as accepted for new users and redirect to dashboard after a brief delay
             setTimeout(() => {
-                router.push('/login');
+                // Set disclaimer as accepted in localStorage
+                localStorage.setItem('disclaimerAccepted', 'true');
+                // Redirect to dashboard instead of login
+                router.push('/dashboard');
             }, 2000);
         } catch (err: any) {
             console.error('Set password error:', err);
@@ -112,7 +115,7 @@ export default function SetPasswordContent() {
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
                         <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-md text-sm mb-4">
-                            Your password has been set successfully. Redirecting to login...
+                            Your password has been set successfully. Redirecting to dashboard...
                         </div>
                     </div>
                 </div>
