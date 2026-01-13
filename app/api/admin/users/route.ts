@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         email,
         role: role.toUpperCase() as 'USER' | 'ADMIN',
         active,
+        status: 'ACTIVE', // Set status to ACTIVE so user can log in immediately
         password: hashedPassword
       }
     });
