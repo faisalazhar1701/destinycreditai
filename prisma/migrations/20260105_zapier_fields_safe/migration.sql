@@ -41,8 +41,8 @@ END $$;
 -- Update existing users to have proper status (only run where status is still default or missing)
 UPDATE "User" 
 SET "status" = CASE 
-  WHEN "active" = true THEN 'ACTIVE'
-  WHEN "active" = false AND "password" IS NOT NULL THEN 'INVITED'
-  ELSE 'REGISTERED'
+  WHEN "active" = true THEN 'ACTIVE'::"UserStatus"
+  WHEN "active" = false AND "password" IS NOT NULL THEN 'INVITED'::"UserStatus"
+  ELSE 'REGISTERED'::"UserStatus"
 END
 WHERE "status" IS NULL OR "status" = 'REGISTERED';
