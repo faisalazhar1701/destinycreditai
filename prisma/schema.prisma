@@ -17,8 +17,10 @@ model User {
   lastLogin       DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  inviteToken     String?
-  inviteExpiresAt DateTime?
+  inviteToken         String?
+  inviteExpiresAt     DateTime?
+  passwordResetToken  String?
+  passwordResetExpiresAt DateTime?
   productName     String?
   productId       String?
   status          UserStatus       @default(REGISTERED)
@@ -29,6 +31,7 @@ model User {
   uploads         UploadedFile[]
 
   @@index([inviteToken])
+  @@index([passwordResetToken])
 }
 
 model CreditLetter {

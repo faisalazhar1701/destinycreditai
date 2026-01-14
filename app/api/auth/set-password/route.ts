@@ -38,148 +38,142 @@ export async function POST(request: Request) {
     const decodedToken = decodeURIComponent(token);
     console.log('🔍 Looking for user with token:', decodedToken);
     
-    // Find user by invite token
-    const user = await prisma.user.findFirst({
+    // First, try to find user by invite token
+    let user = await prisma.user.findFirst({
       where: {
         inviteToken: decodedToken,
       },
     });
     
-    if (user) {
-      console.log('🔍 Found user:', user.email, 'with stored token:', user.inviteToken);
-    } else {
-      console.log('🔍 No user found with token:', decodedToken);
-      
-      // Also try with the original token in case there was an encoding issue
-      if (decodedToken !== token) {
-        const userWithOriginalToken = await prisma.user.findFirst({
-          where: {
-            inviteToken: token,
-          },
-        });
-        
-        if (userWithOriginalToken) {
-          console.log('🔍 Found user with original token (before decoding):', userWithOriginalToken.email);
-          return NextResponse.json(
-            { error: 'Token validation issue - please try the link from your email again' },
-            { status: 400 }
-          );
-        }
-      }
-      
-      // Debug: Check if any users have invite tokens
-      const allUsersWithTokens = await prisma.user.findMany({
-        where: {
-          inviteToken: { not: null },
-        },
-        select: {
-          email: true,
-          inviteToken: true,
-          inviteExpiresAt: true,
-        },
-      });
-      
-      console.log('🔍 Users with invite tokens in DB:', allUsersWithTokens.map((u: any) => ({
-        email: u.email,
-        tokenLength: u.inviteToken?.length,
-        tokenPrefix: u.inviteToken?.substring(0, 10),
-        expiresAt: u.inviteExpiresAt,
-        isExpired: u.inviteExpiresAt && new Date(u.inviteExpiresAt) < new Date()
-      })));
-    }
+    let isInviteToken = false;
     
-    if (!user) {
-      console.log('❌ Invalid or expired token');
+    if (user) {
+      console.log('🔍 Found user with invite token:', user.email);
+      isInviteToken = true;
       
-      // Check if token exists in another format (e.g., trimmed, encoded, or different encoding)
-      const allUsers = await prisma.user.findMany({
-        where: {
-          inviteToken: { not: null },
-        },
-        select: {
-          email: true,
-          inviteToken: true,
-          inviteExpiresAt: true,
-        },
-      });
-      
-      const matchingToken = allUsers.find((u: any) => 
-        u.inviteToken === token || 
-        u.inviteToken === decodedToken ||
-        u.inviteToken?.trim() === token.trim() ||
-        u.inviteToken?.trim() === decodedToken.trim()
-      );
-      
-      if (matchingToken) {
-        console.log('⚠️ Token found but possibly mismatch due to format - stored for user:', matchingToken.email);
+      // Check if invite token is expired
+      if (user.inviteExpiresAt && new Date() > new Date(user.inviteExpiresAt)) {
+        console.log('❌ Invite token has expired');
         return NextResponse.json(
-          { error: 'Token validation issue - please try the link from your email again' },
+          { error: 'Invite token has expired' },
           { status: 400 }
         );
       }
+    } else {
+      // If not found with invite token, try password reset token
+      console.log('🔍 No user found with invite token, trying password reset token:', decodedToken);
       
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 400 }
-      );
-    }
-
-    // Check if token is expired
-    if (user.inviteExpiresAt && new Date() > new Date(user.inviteExpiresAt)) {
-      console.log('❌ Token has expired');
-      return NextResponse.json(
-        { error: 'Token has expired' },
-        { status: 400 }
-      );
+      // Use raw query to avoid type issues
+      const userResult = await prisma.$queryRaw<Array<{ id: string; email: string; name: string | null; passwordResetExpiresAt: Date | null }>>`
+        SELECT id, email, name, "passwordResetExpiresAt"
+        FROM "User"
+        WHERE "passwordResetToken" = ${decodedToken}
+      `;
+      
+      const resetUser = userResult.length > 0 ? userResult[0] : null;
+      
+      if (resetUser) {
+        console.log('🔍 Found user with password reset token:', resetUser.email);
+        
+        // Check if password reset token is expired
+        if (resetUser.passwordResetExpiresAt && new Date() > new Date(resetUser.passwordResetExpiresAt)) {
+          console.log('❌ Password reset token has expired');
+          return NextResponse.json(
+            { error: 'Password reset token has expired' },
+            { status: 400 }
+          );
+        }
+        
+        // Fetch the full user object for password reset
+        user = await prisma.user.findFirst({
+          where: { id: resetUser.id },
+        });
+        
+        if (!user) {
+          console.log('❌ User not found for password reset');
+          return NextResponse.json(
+            { error: 'User not found' },
+            { status: 400 }
+          );
+        }
+      } else {
+        console.log('🔍 No user found with either invite or password reset token:', decodedToken);
+        
+        return NextResponse.json(
+          { error: 'Invalid or expired token' },
+          { status: 400 }
+        );
+      }
     }
 
     // Hash the new password
     const hashedPassword = await hashPassword(password);
 
-    // Update user: set password, activate account, clear token and mark as used
-    // Mark the invite token as used and clear the token data
-    const updateData: any = {
-      password: hashedPassword,
-      active: true, // User is now active
-      status: 'ACTIVE', // Update status to active
-      inviteToken: null, // Clear the invite token to prevent reuse
-      inviteExpiresAt: null, // Clear expiry
-      inviteUsed: true, // Mark token as used - this is the critical step that marks the token as consumed
-    };
-    
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: updateData,
-    }).catch(async (error) => {
-      // If the field doesn't exist yet, try without it
-      if (error.message.includes('inviteUsed') || error.message.includes('Unknown arg')) {
-        const fallbackUpdateData: any = {
-          password: hashedPassword,
-          active: true, // User is now active
-          status: 'ACTIVE', // Update status to active
-          inviteToken: null, // Clear the invite token to prevent reuse
-          inviteExpiresAt: null, // Clear expiry
-        };
-        
-        return await prisma.user.update({
-          where: { id: user.id },
-          data: fallbackUpdateData,
-        });
-      }
-      throw error;
-    });
+    // Update user based on token type
+    if (isInviteToken) {
+      // This is an invite token, activate the user
+      const updateData: any = {
+        password: hashedPassword,
+        active: true, // User is now active
+        status: 'ACTIVE', // Update status to active
+        inviteToken: null, // Clear the invite token to prevent reuse
+        inviteExpiresAt: null, // Clear expiry
+        inviteUsed: true, // Mark token as used - this is the critical step that marks the token as consumed
+      };
+      
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: updateData,
+      }).catch(async (error) => {
+        // If the field doesn't exist yet, try without it
+        if (error.message.includes('inviteUsed') || error.message.includes('Unknown arg')) {
+          const fallbackUpdateData: any = {
+            password: hashedPassword,
+            active: true, // User is now active
+            status: 'ACTIVE', // Update status to active
+            inviteToken: null, // Clear the invite token to prevent reuse
+            inviteExpiresAt: null, // Clear expiry
+          };
+          
+          return await prisma.user.update({
+            where: { id: user.id },
+            data: fallbackUpdateData,
+          });
+        }
+        throw error;
+      });
+      
+      console.log('✅ Password set successfully for user:', user.email);
 
-    console.log('✅ Password set successfully for user:', user.email);
+      return NextResponse.json({
+        message: 'Password set successfully',
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+        }
+      });
+    } else {
+      // This is a password reset token, just update the password and clear the reset token
+      await prisma.$executeRaw`
+        UPDATE "User" 
+        SET "password" = ${hashedPassword}, 
+            "passwordResetToken" = NULL, 
+            "passwordResetExpiresAt" = NULL
+        WHERE "id" = ${user.id}
+      `;
+      
+      console.log('✅ Password reset successfully for user:', user.email);
 
-    return NextResponse.json({
-      message: 'Password set successfully',
-      user: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        name: updatedUser.name,
-      }
-    });
-
+      return NextResponse.json({
+        message: 'Password reset successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        }
+      });
+    }
   } catch (error) {
     console.error('❌ Password setup error:', error);
     return NextResponse.json(
