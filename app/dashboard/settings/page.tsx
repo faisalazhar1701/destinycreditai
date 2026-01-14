@@ -10,6 +10,7 @@ export default function SettingsPage() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [unsubscribeLoading, setUnsubscribeLoading] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -64,6 +65,36 @@ export default function SettingsPage() {
         }
     };
 
+    const handleUnsubscribe = async () => {
+        if (!confirm('Are you sure you want to unsubscribe? You will lose access to premium features.')) {
+            return;
+        }
+        
+        setUnsubscribeLoading(true);
+        setMessage({ type: '', text: '' });
+        
+        try {
+            const res = await fetch('/api/users/unsubscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                setMessage({ type: 'success', text: 'Successfully unsubscribed from service' });
+                // Update local user state
+                setUser({ ...user, subscribed: false });
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Failed to unsubscribe' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Network error occurred' });
+        } finally {
+            setUnsubscribeLoading(false);
+        }
+    };
+
     if (!user) return <div className="p-8 text-center text-gray-500">Loading profile...</div>;
 
     return (
@@ -107,6 +138,23 @@ export default function SettingsPage() {
                         {loading ? 'Saving...' : 'Save Changes'}
                     </button>
                 </form>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold mb-6 text-gray-800 tracking-tight">Subscription</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="font-medium text-gray-700">Cancel your subscription</p>
+                        <p className="text-sm text-gray-500">Unsubscribe from premium services and features.</p>
+                    </div>
+                    <button
+                        onClick={handleUnsubscribe}
+                        disabled={unsubscribeLoading || (user && user.subscribed === false)}
+                        className="px-6 py-2 bg-red-50 text-red-600 border border-red-100 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 font-medium"
+                    >
+                        {unsubscribeLoading ? 'Processing...' : (user && user.subscribed === false ? 'Already Unsubscribed' : 'Unsubscribe')}
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">

@@ -25,6 +25,7 @@ model User {
   productId       String?
   status          UserStatus       @default(REGISTERED)
   plan            String?
+  subscribed      Boolean          @default(true)
   inviteSentAt    DateTime?
   letters         CreditLetter[]
   followUps       FollowUpLetter[]
