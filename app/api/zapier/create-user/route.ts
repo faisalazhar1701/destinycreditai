@@ -197,7 +197,12 @@ export async function POST(request: Request) {
               // password remains null until user sets it
             },
           });
-              
+          
+          // Update subscription status using raw SQL to avoid client sync issues
+          await tx.$executeRaw`
+            UPDATE "User" SET "subscription_status" = 'active' WHERE "id" = ${user.id}
+          `;
+          
           console.log('✅ Created new user with invite token:', email);
           return { user, inviteAlreadySent: false };
         }

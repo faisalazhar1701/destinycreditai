@@ -65,6 +65,11 @@ export async function POST(request: NextRequest) {
         password: hashedPassword
       }
     });
+    
+    // Update subscription status using raw SQL to avoid client sync issues
+    await prisma.$executeRaw`
+      UPDATE "User" SET "subscription_status" = 'active' WHERE "id" = ${user.id}
+    `;
 
     return NextResponse.json({ success: true, data: user });
   } catch (error) {

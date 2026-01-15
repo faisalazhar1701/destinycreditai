@@ -116,6 +116,7 @@ export async function POST(request: Request) {
         password: hashedPassword,
         active: true, // User is now active
         status: 'ACTIVE', // Update status to active
+        subscription_status: 'active', // Set subscription status to active
         inviteToken: null, // Clear the invite token to prevent reuse
         inviteExpiresAt: null, // Clear expiry
         inviteUsed: true, // Mark token as used - this is the critical step that marks the token as consumed
@@ -133,6 +134,17 @@ export async function POST(request: Request) {
             status: 'ACTIVE', // Update status to active
             inviteToken: null, // Clear the invite token to prevent reuse
             inviteExpiresAt: null, // Clear expiry
+          };
+          
+          // Try to update subscription status as well, but ignore if field doesn't exist
+          try {
+            await prisma.$executeRaw`
+              UPDATE "User" SET "subscription_status" = 'active' WHERE "id" = ${user.id}
+            `;
+            fallbackUpdateData.subscription_status = 'active';
+          } catch (subError) {
+            // If subscription_status field doesn't exist yet, just continue
+            console.log('Subscription status field not available, continuing...');
           };
           
           return await prisma.user.update({
@@ -159,7 +171,8 @@ export async function POST(request: Request) {
         UPDATE "User" 
         SET "password" = ${hashedPassword}, 
             "passwordResetToken" = NULL, 
-            "passwordResetExpiresAt" = NULL
+            "passwordResetExpiresAt" = NULL,
+            "subscription_status" = 'active'
         WHERE "id" = ${user.id}
       `;
       
