@@ -80,7 +80,8 @@ interface UploadedFile {
 }
 
 export default function AdminPanel() {
-  const [activeSection, setActiveSection] = useState('users');
+  type SectionId = 'users' | 'letters' | 'followups' | 'workflows' | 'ai-prompts' | 'disclaimers' | 'resources' | 'credit-videos' | 'guidance-video' | 'uploads' | 'activity' | 'admin-management';
+  const [activeSection, setActiveSection] = useState<SectionId>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [letters, setLetters] = useState<CreditLetter[]>([]);
   const [followUps, setFollowUps] = useState<FollowUpLetter[]>([]);
@@ -90,6 +91,7 @@ export default function AdminPanel() {
   const [disclaimers, setDisclaimers] = useState<Disclaimer[]>([]);
   const [resources, setResources] = useState<ResourceLink[]>([]);
   const [uploads, setUploads] = useState<UploadedFile[]>([]);
+  const [subscriptionFilter, setSubscriptionFilter] = useState('all'); // all, active, canceled
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -406,7 +408,7 @@ export default function AdminPanel() {
     }
   };
   
-  const sections = [
+  const sections: { id: SectionId; name: string }[] = [
     { id: 'users', name: '👥 Users' },
     { id: 'letters', name: '📄 Credit Letters' },
     { id: 'followups', name: '📮 Follow-Up Letters' },
@@ -522,7 +524,24 @@ export default function AdminPanel() {
             <>
               {/* Users Section */}
               {activeSection === 'users' && (
-                <div className="overflow-x-auto">
+                <div>
+                  {/* Subscription Status Filter */}
+                  <div className="mb-4 flex gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Subscription Status</label>
+                      <select
+                        value={subscriptionFilter}
+                        onChange={(e) => setSubscriptionFilter(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-green focus:border-primary-green outline-none"
+                      >
+                        <option value="all">All Users</option>
+                        <option value="active">Active Subscribers</option>
+                        <option value="canceled">Unsubscribed Users</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -587,6 +606,7 @@ export default function AdminPanel() {
                     </tbody>
                   </table>
                 </div>
+              </div>
               )}
 
               {/* Credit Letters Section */}

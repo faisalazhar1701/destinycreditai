@@ -25,7 +25,8 @@ model User {
   productId       String?
   status          UserStatus       @default(REGISTERED)
   plan            String?
-  subscribed      Boolean          @default(true)
+  subscription_status SubscriptionStatus @default(active)
+  unsubscribed_at DateTime?
   inviteSentAt    DateTime?
   letters         CreditLetter[]
   followUps       FollowUpLetter[]
@@ -130,4 +131,9 @@ enum UserStatus {
 enum Role {
   ADMIN
   USER
+}
+
+enum SubscriptionStatus {
+  active
+  canceled
 }

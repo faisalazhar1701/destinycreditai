@@ -26,6 +26,12 @@ export default function SettingsPage() {
                     setUser(data.user);
                     setName(data.user.name || '');
                     setEmail(data.user.email || '');
+                    
+                    // Check subscription status
+                    if (data.user.subscription_status !== 'active') {
+                        router.push('/subscription-canceled');
+                        return;
+                    }
                 } else {
                     router.push('/login');
                 }
@@ -89,7 +95,7 @@ export default function SettingsPage() {
             if (res.ok) {
                 setMessage({ type: 'success', text: 'Successfully unsubscribed from service' });
                 // Update local user state
-                setUser({ ...user, subscribed: false });
+                setUser({ ...user, subscription_status: 'canceled' });
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to unsubscribe' });
             }
@@ -194,10 +200,10 @@ export default function SettingsPage() {
                     </div>
                     <button
                         onClick={handleUnsubscribe}
-                        disabled={unsubscribeLoading || (user && user.subscribed === false)}
+                        disabled={unsubscribeLoading || (user && user.subscription_status === 'canceled')}
                         className="px-6 py-2 bg-red-50 text-red-600 border border-red-100 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 font-medium"
                     >
-                        {unsubscribeLoading ? 'Processing...' : (user && user.subscribed === false ? 'Already Unsubscribed' : 'Unsubscribe')}
+                        {unsubscribeLoading ? 'Processing...' : (user && user.subscription_status === 'canceled' ? 'Already Unsubscribed' : 'Unsubscribe')}
                     </button>
                 </div>
             </div>

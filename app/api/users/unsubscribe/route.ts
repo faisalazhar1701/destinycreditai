@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
         // Update user subscription status using raw query
         await prisma.$executeRaw`
             UPDATE "User" 
-            SET "subscribed" = false
+            SET "subscription_status" = 'canceled'::"SubscriptionStatus",
+                "unsubscribed_at" = NOW()
             WHERE "id" = ${userId}
         `;
 
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
                 id: updatedUser.id,
                 email: updatedUser.email,
                 name: updatedUser.name,
-                subscribed: false
+                subscription_status: 'canceled'
             }
         });
 

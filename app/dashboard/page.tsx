@@ -49,6 +49,13 @@ export default function Dashboard() {
           const data = await res.json();
           if (data.user) {
             setUser(data.user);
+            
+            // Check subscription status
+            if (data.user.subscription_status !== 'active') {
+              router.push('/subscription-canceled');
+              return;
+            }
+            
             setFormData(prev => ({
               ...prev,
               userName: (data.user.name && data.user.name !== 'Admin User') ? data.user.name : prev.userName,
