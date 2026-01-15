@@ -11,6 +11,11 @@ export default function SettingsPage() {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState({ type: '', text: '' });
     const [unsubscribeLoading, setUnsubscribeLoading] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [changePasswordMessage, setChangePasswordMessage] = useState({ type: '', text: '' });
+    const [changePasswordLoading, setChangePasswordLoading] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -95,6 +100,46 @@ export default function SettingsPage() {
         }
     };
 
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setChangePasswordLoading(true);
+        setChangePasswordMessage({ type: '', text: '' });
+        
+        // Validate passwords match
+        if (newPassword !== confirmNewPassword) {
+            setChangePasswordMessage({ type: 'error', text: 'New passwords do not match' });
+            setChangePasswordLoading(false);
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword,
+                    newPassword
+                })
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok) {
+                setChangePasswordMessage({ type: 'success', text: 'Password changed successfully!' });
+                // Clear form
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmNewPassword('');
+            } else {
+                setChangePasswordMessage({ type: 'error', text: data.error || 'Failed to change password' });
+            }
+        } catch (error) {
+            setChangePasswordMessage({ type: 'error', text: 'Network error occurred' });
+        } finally {
+            setChangePasswordLoading(false);
+        }
+    };
+
     if (!user) return <div className="p-8 text-center text-gray-500">Loading profile...</div>;
 
     return (
@@ -155,6 +200,54 @@ export default function SettingsPage() {
                         {unsubscribeLoading ? 'Processing...' : (user && user.subscribed === false ? 'Already Unsubscribed' : 'Unsubscribe')}
                     </button>
                 </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <h2 className="text-xl font-semibold mb-6 text-gray-800 tracking-tight">Password</h2>
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                        <input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-green focus:border-primary-green outline-none transition-all"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-green focus:border-primary-green outline-none transition-all"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                        <input
+                            type="password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-green focus:border-primary-green outline-none transition-all"
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={changePasswordLoading}
+                        className="bg-primary-green hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
+                    >
+                        {changePasswordLoading ? 'Changing...' : 'Change Password'}
+                    </button>
+                    {changePasswordMessage.text && (
+                        <div className={`mt-4 p-4 rounded-md text-sm ${changePasswordMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                            {changePasswordMessage.text}
+                        </div>
+                    )}
+                </form>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
