@@ -18,20 +18,40 @@ export default function AdminAuth({ children }: AdminAuthProps) {
   // Check if user is already authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.user && data.user.role === 'ADMIN') {
-            setIsAuthenticated(true);
+      // Retry mechanism for cases where cookie might not be immediately available after redirect
+      let retries = 0;
+      const maxRetries = 3;
+      
+      while (retries < maxRetries) {
+        try {
+          const res = await fetch('/api/auth/me');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.user && data.user.role === 'ADMIN') {
+              setIsAuthenticated(true);
+              setIsChecking(false);
+              return; // Exit early if authenticated
+            }
+          }
+          
+          // If not authenticated, wait a bit before retrying
+          retries++;
+          if (retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms before retry
+          }
+        } catch (err) {
+          console.error('Auth check failed', err);
+          retries++;
+          if (retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms before retry
           }
         }
-      } catch (err) {
-        console.error('Auth check failed', err);
-      } finally {
-        setIsChecking(false);
       }
+      
+      // If all retries failed, set checking to false
+      setIsChecking(false);
     };
+    
     checkAuth();
   }, []);
 
