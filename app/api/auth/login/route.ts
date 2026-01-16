@@ -157,8 +157,6 @@ export async function POST(request: Request) {
 
     // For USER role, check subscription requirements
     // Query the full user object to access new fields (status, plan, etc.)
-    // For USER role, check subscription requirements
-    // Query the full user object to access new fields (status, plan, etc.)
     let fullUser;
     try {
       // First, try to query with all fields including subscription_status
