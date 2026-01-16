@@ -157,15 +157,44 @@ export async function POST(request: Request) {
 
     // For USER role, check subscription requirements
     // Query the full user object to access new fields (status, plan, etc.)
-    const fullUser = await prisma.user.findFirst({
-      where: { email },
-    });
-
-    if (!fullUser) {
-      console.log('❌ User not found when fetching full user object:', email);
+    // For USER role, check subscription requirements
+    // Query the full user object to access new fields (status, plan, etc.)
+    let fullUser;
+    try {
+      fullUser = await prisma.user.findFirst({
+        where: { email },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          password: true,
+          role: true,
+          active: true,
+          status: true,
+          subscription_status: true,
+          lastLogin: true
+        }
+      });
+      
+      if (!fullUser) {
+        console.log('❌ User not found when fetching full user object:', email);
+        return NextResponse.json(
+          { error: 'Invalid credentials' },
+          { status: 401 }
+        );
+      }
+      
+      console.log('✅ Found user for subscription check:', {
+        email: fullUser.email,
+        subscription_status: fullUser.subscription_status,
+        role: fullUser.role,
+        status: fullUser.status
+      });
+    } catch (userQueryError) {
+      console.error('❌ Error querying user for subscription check:', userQueryError);
       return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
+        { error: 'Database error during authentication' },
+        { status: 500 }
       );
     }
 
@@ -329,9 +358,18 @@ export async function POST(request: Request) {
     console.error('❌ Login error (FULL):', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     console.error('Error message:', error instanceof Error ? error.message : String(error));
+    
+    // More detailed error logging for debugging
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error cause:', error.cause);
+    }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        debug: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : String(error) : undefined
+      },
       { status: 500 }
     );
   }
