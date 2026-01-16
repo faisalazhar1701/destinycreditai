@@ -53,8 +53,8 @@ export default function AdminAuth({ children }: AdminAuthProps) {
 
       if (res.ok) {
         if (data.user && data.user.role === 'ADMIN') {
-          setIsAuthenticated(true);
-          setError('');
+          // Redirect to admin panel after successful login
+          window.location.href = '/admin';
         } else {
           setError('Access denied. Admin role required.');
         }
