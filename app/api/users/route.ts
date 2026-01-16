@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
         name,
         email,
         role: role.toUpperCase() as 'USER' | 'ADMIN',
-        password: 'password123' // Default password required by schema
+        password: 'password123', // Default password required by schema
+        subscription_status: 'ACTIVE' as any // Explicitly set to ACTIVE to ensure access
       }
     });
 

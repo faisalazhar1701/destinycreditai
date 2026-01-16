@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
       }
       
       // Block access if user is unsubscribed (only applies to USER role)
-      if (user.role === 'USER' && user.subscription_status === 'UNSUBSCRIBED') {
+      if (user.role === 'USER' && user.subscription_status === 'UNSUBSCRIBED' as any) {
         return NextResponse.redirect(new URL('/subscription-canceled', request.url));
       }
     } catch (error) {

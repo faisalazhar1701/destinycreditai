@@ -31,7 +31,16 @@ export async function GET() {
     
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        status: true,
+        subscription_status: true,
+        createdAt: true,
+        lastLogin: true,
         _count: {
           select: { letters: true, followUps: true }
         }
@@ -68,7 +77,7 @@ export async function POST(request: NextRequest) {
     
     // Update subscription status using raw SQL to avoid client sync issues
     await prisma.$executeRaw`
-      UPDATE "User" SET "subscription_status" = 'active' WHERE "id" = ${user.id}
+      UPDATE "User" SET "subscription_status" = 'ACTIVE' WHERE "id" = ${user.id}
     `;
 
     return NextResponse.json({ success: true, data: user });
