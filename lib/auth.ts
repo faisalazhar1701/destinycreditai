@@ -36,25 +36,20 @@ export function verifyToken(token: string): any {
 
 // Check if user has valid subscription based on role
 // ADMIN users bypass subscription checks
-// USER users must have valid plan and status
+// USER users must have valid subscription status
 export function hasValidSubscription(user: any): boolean {
     // ADMIN users always have access
     if (user.role === 'ADMIN') {
         return true;
     }
     
-    // For USER role, check subscription requirements
+    // For USER role, check subscription status
+    // Block only if subscription_status === 'UNSUBSCRIBED'
+    // New users or users without this field must NOT be blocked
     if (user.role === 'USER') {
-        // Check if user has a valid plan
-        const hasPlan = user.plan || user.name?.includes('(monthly)') || user.name?.includes('(annual)');
-        
-        // Check if user has active status
-        const isActive = user.status === 'ACTIVE';
-        
-        // Check if user is active (boolean)
-        const isActiveBoolean = user.active === true;
-        
-        return hasPlan && isActive && isActiveBoolean;
+        // If subscription_status is 'UNSUBSCRIBED', deny access
+        // Otherwise allow access (including if field doesn't exist or has other values)
+        return user.subscription_status !== 'UNSUBSCRIBED';
     }
     
     return false;

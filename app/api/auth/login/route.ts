@@ -187,7 +187,15 @@ export async function POST(request: Request) {
       }
     }
 
-
+    // Check subscription status - BLOCK ONLY if subscription_status === 'UNSUBSCRIBED'
+    // New users or users without this field must NOT be blocked
+    if (fullUser.subscription_status === 'UNSUBSCRIBED') {
+      console.log('❌ User has unsubscribed status and is blocked from logging in:', email);
+      return NextResponse.json(
+        { error: 'Your subscription has been cancelled. Please resubscribe to continue.' },
+        { status: 403 }
+      );
+    }
 
     // Guard: User must be active
     if (!fullUser.active) {
@@ -270,7 +278,7 @@ export async function POST(request: Request) {
           userId: fullUser.id,
           email: fullUser.email,
           role: fullUser.role,
-          hasValidSubscription: true, // All users now have valid subscription by default since plan check was removed
+          hasValidSubscription: fullUser.subscription_status !== 'UNSUBSCRIBED',
         },
         jwtSecret,
         { expiresIn: '7d' }
@@ -297,7 +305,8 @@ export async function POST(request: Request) {
         email: fullUser.email,
         name: fullUser.name,
         role: fullUser.role,
-        hasValidSubscription: true // All users now have valid subscription by default since plan check was removed
+        hasValidSubscription: fullUser.subscription_status !== 'UNSUBSCRIBED',
+        subscription_status: fullUser.subscription_status,
       },
     });
 

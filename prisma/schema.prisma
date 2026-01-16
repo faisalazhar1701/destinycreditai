@@ -25,7 +25,7 @@ model User {
   productId       String?
   status          UserStatus       @default(REGISTERED)
   plan            String?
-  subscription_status SubscriptionStatus @default(active)
+  subscription_status SubscriptionStatus @default(ACTIVE)
   unsubscribed_at DateTime?
   inviteSentAt    DateTime?
   letters         CreditLetter[]
@@ -134,6 +134,6 @@ enum Role {
 }
 
 enum SubscriptionStatus {
-  active
-  canceled
+  ACTIVE
+  UNSUBSCRIBED
 }
