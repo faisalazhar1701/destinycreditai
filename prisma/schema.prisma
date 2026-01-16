@@ -8,29 +8,30 @@ datasource db {
 }
 
 model User {
-  id              String           @id @default(uuid())
-  name            String?
-  email           String           @unique
-  password        String?
-  role            Role             @default(USER)
-  active          Boolean          @default(true)
-  lastLogin       DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  inviteToken         String?
-  inviteExpiresAt     DateTime?
-  passwordResetToken  String?
+  id                     String             @id @default(uuid())
+  name                   String?
+  email                  String             @unique
+  password               String?
+  role                   Role               @default(USER)
+  active                 Boolean            @default(true)
+  lastLogin              DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  inviteToken            String?
+  inviteExpiresAt        DateTime?
+  productName            String?
+  productId              String?
+  status                 UserStatus         @default(REGISTERED)
+  plan                   String?
+  inviteSentAt           DateTime?
+  inviteUsed             Boolean?           @default(false)
+  passwordResetToken     String?
   passwordResetExpiresAt DateTime?
-  productName     String?
-  productId       String?
-  status          UserStatus       @default(REGISTERED)
-  plan            String?
-  subscription_status SubscriptionStatus @default(ACTIVE)
-  unsubscribed_at DateTime?
-  inviteSentAt    DateTime?
-  letters         CreditLetter[]
-  followUps       FollowUpLetter[]
-  uploads         UploadedFile[]
+  subscription_status    SubscriptionStatus @default(active)
+  unsubscribed_at        DateTime?
+  letters                CreditLetter[]
+  followUps              FollowUpLetter[]
+  uploads                UploadedFile[]
 
   @@index([inviteToken])
   @@index([passwordResetToken])
@@ -134,6 +135,6 @@ enum Role {
 }
 
 enum SubscriptionStatus {
-  ACTIVE
-  UNSUBSCRIBED
+  active
+  canceled
 }

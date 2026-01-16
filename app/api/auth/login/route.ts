@@ -161,20 +161,45 @@ export async function POST(request: Request) {
     // Query the full user object to access new fields (status, plan, etc.)
     let fullUser;
     try {
-      fullUser = await prisma.user.findFirst({
-        where: { email },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          password: true,
-          role: true,
-          active: true,
-          status: true,
-          subscription_status: true,
-          lastLogin: true
+      // First, try to query with all fields including subscription_status
+      try {
+        fullUser = await prisma.user.findFirst({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+            active: true,
+            status: true,
+            subscription_status: true,
+            lastLogin: true
+          }
+        });
+      } catch (selectError) {
+        // If subscription_status field doesn't exist yet, query without it
+        console.warn('⚠️ subscription_status field not found, falling back to legacy query:', selectError);
+        fullUser = await prisma.user.findFirst({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+            active: true,
+            status: true,
+            lastLogin: true
+            // Omit subscription_status since it might not exist in DB yet
+          }
+        });
+        
+        // Add a default subscription_status for backward compatibility
+        if (fullUser) {
+          (fullUser as any).subscription_status = 'ACTIVE'; // Default to ACTIVE for existing users
         }
-      });
+      }
       
       if (!fullUser) {
         console.log('❌ User not found when fetching full user object:', email);
@@ -186,14 +211,18 @@ export async function POST(request: Request) {
       
       console.log('✅ Found user for subscription check:', {
         email: fullUser.email,
-        subscription_status: fullUser.subscription_status,
+        subscription_status: (fullUser as any).subscription_status,
         role: fullUser.role,
         status: fullUser.status
       });
     } catch (userQueryError) {
       console.error('❌ Error querying user for subscription check:', userQueryError);
+      console.error('Error details:', {
+        message: userQueryError instanceof Error ? userQueryError.message : String(userQueryError),
+        stack: userQueryError instanceof Error ? userQueryError.stack : 'No stack'
+      });
       return NextResponse.json(
-        { error: 'Database error during authentication' },
+        { error: 'Database error during authentication: ' + (userQueryError instanceof Error ? userQueryError.message : 'Unknown error') },
         { status: 500 }
       );
     }
@@ -218,7 +247,7 @@ export async function POST(request: Request) {
 
     // Check subscription status - BLOCK ONLY if subscription_status === 'UNSUBSCRIBED'
     // New users or users without this field must NOT be blocked
-    if (fullUser.subscription_status === 'UNSUBSCRIBED' as any) {
+    if ((fullUser as any).subscription_status === 'UNSUBSCRIBED' as any) {
       console.log('❌ User has unsubscribed status and is blocked from logging in:', email);
       return NextResponse.json(
         { error: 'Your subscription has been cancelled. Please resubscribe to continue.' },
@@ -307,7 +336,7 @@ export async function POST(request: Request) {
           userId: fullUser.id,
           email: fullUser.email,
           role: fullUser.role,
-          hasValidSubscription: fullUser.subscription_status !== 'UNSUBSCRIBED' as any,
+          hasValidSubscription: (fullUser as any).subscription_status !== 'UNSUBSCRIBED' as any,
         },
         jwtSecret,
         { expiresIn: '7d' }
@@ -334,8 +363,8 @@ export async function POST(request: Request) {
         email: fullUser.email,
         name: fullUser.name,
         role: fullUser.role,
-        hasValidSubscription: fullUser.subscription_status !== 'UNSUBSCRIBED' as any,
-        subscription_status: fullUser.subscription_status,
+        hasValidSubscription: (fullUser as any).subscription_status !== 'UNSUBSCRIBED' as any,
+        subscription_status: (fullUser as any).subscription_status,
       },
     });
 
