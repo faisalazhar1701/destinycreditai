@@ -1324,14 +1324,14 @@ function EditForm({ type, data, users, onSave, onCancel }: any) {
             <option value="USER">User</option>
             <option value="ADMIN">Admin</option>
           </select>
-          <select
+          {/* <select
             value={formData.active !== undefined ? (formData.active ? 'true' : 'false') : 'true'}
             onChange={(e) => setFormData({ ...formData, active: e.target.value === 'true' })}
             className="w-full p-2 border rounded"
           >
             <option value="true">Active</option>
             <option value="false">Inactive</option>
-          </select>
+          </select> */}
           <select
             value={formData.subscription_status || 'ACTIVE'}
             onChange={(e) => setFormData({ ...formData, subscription_status: e.target.value })}
