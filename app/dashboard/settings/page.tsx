@@ -96,6 +96,13 @@ export default function SettingsPage() {
                 setMessage({ type: 'success', text: 'Successfully unsubscribed from service' });
                 // Update local user state
                 setUser({ ...user, subscription_status: 'UNSUBSCRIBED' });
+                
+                // Redirect to resubscribe page if provided
+                if (data.redirect_url) {
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 2000); // Redirect after 2 seconds to show success message
+                }
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to unsubscribe' });
             }
