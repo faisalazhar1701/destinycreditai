@@ -111,15 +111,13 @@ export async function POST(request: Request) {
 
       let token: string;
       try {
-        token = jwt.sign(
+        token = await signToken(
           {
             userId: user.id,
             email: user.email,
             role: user.role,
             hasValidSubscription: true, // Admins always have valid subscription
-          },
-          jwtSecret,
-          { expiresIn: '7d' }
+          }
         );
       } catch (jwtError) {
         console.error('❌ JWT signing error for admin:', jwtError);
@@ -329,15 +327,13 @@ export async function POST(request: Request) {
           { status: 500 }
         );
       }
-      token = jwt.sign(
+      token = await signToken(
         {
           userId: fullUser.id,
           email: fullUser.email,
           role: fullUser.role,
           hasValidSubscription: (fullUser as any).subscription_status !== 'UNSUBSCRIBED' as any,
-        },
-        jwtSecret,
-        { expiresIn: '7d' }
+        }
       );
     } catch (jwtError) {
       console.error('❌ JWT signing error:', jwtError);

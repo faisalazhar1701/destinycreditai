@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken } from './lib/auth'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes
@@ -23,13 +23,29 @@ export function middleware(request: NextRequest) {
 
     if (!token) {
       console.log('No auth token found, redirecting to login');
+      // Check if this is an API call (JSON response expected)
+      const acceptHeader = request.headers.get('accept');
+      if (acceptHeader && acceptHeader.includes('application/json')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    const payload = verifyToken(token)
+    const payload = await verifyToken(token)
 
     if (!payload?.userId) {
       console.log('Invalid token, redirecting to login');
+      // Check if this is an API call (JSON response expected)
+      const acceptHeader = request.headers.get('accept');
+      if (acceptHeader && acceptHeader.includes('application/json')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }

@@ -1,6 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-me';
 
@@ -23,11 +22,12 @@ export async function signToken(payload: any): Promise<string> {
     return token;
 }
 
-export function verifyToken(token: string): any {
+export async function verifyToken(token: string): Promise<any> {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        console.log('🔓 Token verified successfully:', decoded);
-        return decoded;
+        const secret = new TextEncoder().encode(JWT_SECRET);
+        const { payload } = await jwtVerify(token, secret);
+        console.log('🔓 Token verified successfully:', payload);
+        return payload;
     } catch (error: any) {
         console.error('❌ Token verification failed:', error.message);
         return null;
