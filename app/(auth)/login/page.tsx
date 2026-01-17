@@ -22,10 +22,9 @@ export default function LoginPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
-                credentials: 'include', // Ensure cookies are included
+                credentials: 'include',
             });
 
-            // Check if response is JSON before parsing
             const contentType = res.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
                 console.error('❌ Response is not JSON:', await res.text());
@@ -41,37 +40,22 @@ export default function LoginPage() {
 
             console.log('✅ Login successful! Redirecting to:', data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
             
-            // Use Next.js router for client-side navigation instead of full page reload
-            // This preserves auth state and avoids cookie timing issues
-            // Add a timeout to clear loading state in case navigation is blocked by middleware
-            // This prevents the stuck "Signing in..." state
-            const timeoutId = setTimeout(() => {
-                setLoading(false);
-            }, 2000); // 2 seconds timeout
+            // *** THE FIX: Use window.location instead of router.push ***
+            // This forces a full page reload, ensuring the cookie is properly set
+            // and middleware/auth checks can detect it
+            if (data.user.role === 'ADMIN') {
+                window.location.href = '/admin';
+            } else {
+                window.location.href = '/dashboard';
+            }
             
-            // Add a small delay to ensure cookie is set before navigation
-            // This addresses the timing issue between cookie setting and middleware check
-            setTimeout(() => {
-                try {
-                    if (data.user.role === 'ADMIN') {
-                        router.push('/admin');
-                    } else {
-                        router.push('/dashboard');
-                    }
-                    
-                    // Clear the timeout if navigation succeeds
-                    clearTimeout(timeoutId);
-                } catch (navigationError) {
-                    console.error('Navigation failed:', navigationError);
-                    setError('Navigation error. Please try refreshing the page.');
-                    clearTimeout(timeoutId);
-                    setLoading(false);
-                }
-            }, 100); // Small delay to ensure cookie propagation
+            // Keep loading state true during redirect
+            // Don't set it to false, let the page reload handle it
+            
         } catch (err: any) {
             console.error('❌ Login error:', err);
             setError(err.message);
-            setLoading(false);
+            setLoading(false); // Only set to false on error
         }
     };
 
@@ -144,7 +128,7 @@ export default function LoginPage() {
                                 type="submit"
                                 disabled={loading}
                                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-green hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-green disabled:opacity-50 transition-colors"
-                                style={{ color: '#fff' }} // Enforcing white text
+                                style={{ color: '#fff' }}
                             >
                                 {loading ? 'Signing in...' : 'Sign in'}
                             </button>
@@ -154,4 +138,4 @@ export default function LoginPage() {
             </div>
         </div>
     );
-}
+}   
