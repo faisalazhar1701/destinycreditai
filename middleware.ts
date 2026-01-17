@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server';
-import { NextRequest } from 'next/server';
-import { verifyToken } from './lib/auth';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { verifyToken } from './lib/auth'
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-  // Read cookie safely (EDGE SAFE)
-  const token = request.cookies.get('auth_token')?.value;
-
-  // Public routes
+  // Allow public routes
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
@@ -17,28 +14,27 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/favicon.ico') ||
     pathname.startsWith('/subscription-canceled')
   ) {
-    return NextResponse.next();
+    return NextResponse.next()
   }
 
-  // Protect admin & dashboard routes - basic auth check only
+  // Only protect dashboard routes
   if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
+    const token = request.cookies.get('auth_token')?.value
+
     if (!token) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-    
-    // Verify token only (no database access in edge runtime)
-    const payload = verifyToken(token);
+
+    const payload = verifyToken(token)
+
     if (!payload?.userId) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-    
-    // Additional checks (role, subscription) will be handled in server components
-    // This ensures the middleware stays lightweight and Edge-compatible
   }
 
-  return NextResponse.next();
+  return NextResponse.next()
 }
 
 export const config = {
   matcher: ['/dashboard/:path*', '/admin/:path*'],
-};
+}
