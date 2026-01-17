@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { signToken } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {

@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload?.userId) {
       return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
     }

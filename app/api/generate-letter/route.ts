@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       logDebug('Auth failed: No token');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload?.userId) {
       logDebug('Auth failed: Invalid token');
       return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });

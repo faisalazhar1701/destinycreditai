@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     // Role check for admin or user (users should see their own, admins see all?)
     // Actually this is an admin route, so role check strictly for ADMIN
     if (!payload || payload.role !== 'ADMIN') {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Invalid session' }, { status: 401 });
     }

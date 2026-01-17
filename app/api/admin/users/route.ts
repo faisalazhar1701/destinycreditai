@@ -11,7 +11,7 @@ async function authenticateAdmin() {
       return { success: false, error: 'Unauthorized', status: 401 };
     }
     
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload || payload.role !== 'ADMIN') {
       return { success: false, error: 'Forbidden', status: 403 };
     }
