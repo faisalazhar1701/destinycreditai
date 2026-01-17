@@ -103,7 +103,7 @@ export default function Dashboard() {
     };
     fetchUser();
     fetchPrompts();
-  }, [router]);
+  }, []);
 
   const fetchWorkflows = async () => {
     try {
@@ -676,28 +676,31 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
     const accepted = localStorage.getItem('disclaimerAccepted');
     if (!accepted) {
       router.push('/disclaimer');
+      return; // Early return to prevent further execution
     } else {
       setHasAccepted(true);
-    }
-    const fetchFollowUpLetters = async () => {
-      try {
-        const res = await fetch('/api/followup-letters');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setFollowupLetters(data.data.map((l: any) => l.content));
+      
+      // Only run other fetches if disclaimer is accepted
+      const fetchFollowUpLetters = async () => {
+        try {
+          const res = await fetch('/api/followup-letters');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              setFollowupLetters(data.data.map((l: any) => l.content));
+            }
           }
+        } catch (err) {
+          console.error('Failed to fetch follow-ups', err);
         }
-      } catch (err) {
-        console.error('Failed to fetch follow-ups', err);
-      }
-    };
-
-    fetchWorkflows();
-    fetchCreditLetters();
-    fetchFollowUpLetters();
-    fetchUploadedDocuments();
-    fetchResources();
+      };
+      
+      fetchWorkflows();
+      fetchCreditLetters();
+      fetchFollowUpLetters();
+      fetchUploadedDocuments();
+      fetchResources();
+    }
   }, [router]);
 
   if (!hasAccepted) {

@@ -43,10 +43,17 @@ export default function LoginPage() {
             
             // Use Next.js router for client-side navigation instead of full page reload
             // This preserves auth state and avoids cookie timing issues
-            if (data.user.role === 'ADMIN') {
-                router.push('/admin');
-            } else {
-                router.push('/dashboard');
+            // Direct navigation with error handling
+            try {
+                if (data.user.role === 'ADMIN') {
+                    router.push('/admin');
+                } else {
+                    router.push('/dashboard');
+                }
+            } catch (navigationError) {
+                console.error('Navigation failed:', navigationError);
+                setError('Navigation error. Please try refreshing the page.');
+                setLoading(false);
             }
         } catch (err: any) {
             console.error('❌ Login error:', err);
