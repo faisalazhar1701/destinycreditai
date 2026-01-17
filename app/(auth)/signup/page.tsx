@@ -30,8 +30,8 @@ export default function SignupPage() {
                 throw new Error(data.error || 'Signup failed');
             }
 
-            // Use Next.js router for client-side navigation
-            router.push('/dashboard');
+            // Use window.location.assign for reliable redirect after signup
+            window.location.assign('/dashboard');
         } catch (err: any) {
             setError(err.message);
             setLoading(false);
