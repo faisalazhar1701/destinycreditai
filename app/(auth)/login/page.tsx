@@ -43,18 +43,31 @@ export default function LoginPage() {
             
             // Use Next.js router for client-side navigation instead of full page reload
             // This preserves auth state and avoids cookie timing issues
-            // Direct navigation with error handling
-            try {
-                if (data.user.role === 'ADMIN') {
-                    router.push('/admin');
-                } else {
-                    router.push('/dashboard');
-                }
-            } catch (navigationError) {
-                console.error('Navigation failed:', navigationError);
-                setError('Navigation error. Please try refreshing the page.');
+            // Add a timeout to clear loading state in case navigation is blocked by middleware
+            // This prevents the stuck "Signing in..." state
+            const timeoutId = setTimeout(() => {
                 setLoading(false);
-            }
+            }, 2000); // 2 seconds timeout
+            
+            // Add a small delay to ensure cookie is set before navigation
+            // This addresses the timing issue between cookie setting and middleware check
+            setTimeout(() => {
+                try {
+                    if (data.user.role === 'ADMIN') {
+                        router.push('/admin');
+                    } else {
+                        router.push('/dashboard');
+                    }
+                    
+                    // Clear the timeout if navigation succeeds
+                    clearTimeout(timeoutId);
+                } catch (navigationError) {
+                    console.error('Navigation failed:', navigationError);
+                    setError('Navigation error. Please try refreshing the page.');
+                    clearTimeout(timeoutId);
+                    setLoading(false);
+                }
+            }, 100); // Small delay to ensure cookie propagation
         } catch (err: any) {
             console.error('❌ Login error:', err);
             setError(err.message);
