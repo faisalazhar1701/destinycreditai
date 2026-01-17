@@ -27,7 +27,7 @@ model User {
   inviteUsed             Boolean?           @default(false)
   passwordResetToken     String?
   passwordResetExpiresAt DateTime?
-  subscription_status    SubscriptionStatus @default(active)
+  subscription_status    SubscriptionStatus @default(ACTIVE)
   unsubscribed_at        DateTime?
   letters                CreditLetter[]
   followUps              FollowUpLetter[]
@@ -135,6 +135,6 @@ enum Role {
 }
 
 enum SubscriptionStatus {
-  active
-  canceled
+  ACTIVE
+  UNSUBSCRIBED
 }
