@@ -11,7 +11,7 @@ export default function SubscriptionCanceledPage() {
     const handleResubscribe = () => {
         setLoading(true);
         // Redirect to the public landing page/checkout
-        window.location.href = '/';
+        window.location.href = 'https://www.shakehandswithdestiny.org/destiny-credit-ai';
     };
 
     return (
