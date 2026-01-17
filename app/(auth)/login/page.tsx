@@ -41,15 +41,12 @@ export default function LoginPage() {
 
             console.log('✅ Login successful! Redirecting to:', data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
             
-            // Small delay to ensure cookie is set, then do full page reload
-            // await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Use window.location for full page reload to ensure cookie is set
-            // This prevents middleware redirect issues
+            // Use Next.js router for client-side navigation instead of full page reload
+            // This preserves auth state and avoids cookie timing issues
             if (data.user.role === 'ADMIN') {
-                window.location.href = '/admin';
+                router.push('/admin');
             } else {
-                window.location.href = '/dashboard';
+                router.push('/dashboard');
             }
         } catch (err: any) {
             console.error('❌ Login error:', err);

@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'; //added by hannan
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AdminAuth from '../../components/AdminAuth';
 
@@ -101,6 +102,7 @@ export default function AdminPanel() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [adminToDelete, setAdminToDelete] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchData();
@@ -396,7 +398,7 @@ export default function AdminPanel() {
         // Redirect to login if we deleted ourselves
         if (adminId === localStorage.getItem('currentUserId')) {
           await fetch('/api/auth/logout', { method: 'POST' });
-          window.location.href = '/login';
+          router.push('/login');
         }
       } else {
         alert('❌ Failed to delete admin: ' + (result.error || 'Unknown error'));
@@ -450,7 +452,7 @@ export default function AdminPanel() {
               <button
                 onClick={async () => {
                   await fetch('/api/auth/logout', { method: 'POST' });
-                  window.location.href = '/login';
+                  router.push('/login');
                 }}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 style={{ color: 'white' }}

@@ -30,8 +30,8 @@ export default function SignupPage() {
                 throw new Error(data.error || 'Signup failed');
             }
 
-            // Use window.location for full page reload to ensure cookie is set
-            window.location.href = '/dashboard';
+            // Use Next.js router for client-side navigation
+            router.push('/dashboard');
         } catch (err: any) {
             setError(err.message);
             setLoading(false);

@@ -41,8 +41,8 @@ export default function Dashboard() {
   const isFormValid = formData.userName && formData.creditorName && formData.accountNumber && formData.bureau && formData.disputeReason;
 
   useEffect(() => {
-    // Fetch authenticated user
-    const fetchUser = async () => {
+    // Fetch authenticated user with retry logic
+    const fetchUser = async (retryCount = 0) => {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
@@ -51,7 +51,7 @@ export default function Dashboard() {
             setUser(data.user);
             
             // Check subscription status
-            if (data.user.subscription_status !== 'active') {
+            if (data.user.subscription_status === 'UNSUBSCRIBED') {
               router.push('/subscription-canceled');
               return;
             }
@@ -60,13 +60,33 @@ export default function Dashboard() {
               ...prev,
               userName: (data.user.name && data.user.name !== 'Admin User') ? data.user.name : prev.userName,
             }));
+          } else if (retryCount < 3) {
+            // Retry up to 3 times with small delays
+            console.log(`Retrying user fetch (${retryCount + 1}/3)...`);
+            setTimeout(() => fetchUser(retryCount + 1), 200);
+            return;
           } else {
-            // Middleware should handle this, but checking just in case
+            // After retries failed, redirect to login
+            console.log('User fetch failed after retries, redirecting to login');
             router.push('/login');
           }
+        } else if (retryCount < 3) {
+          // Retry on non-OK responses
+          console.log(`Retrying user fetch due to response error (${retryCount + 1}/3)...`);
+          setTimeout(() => fetchUser(retryCount + 1), 300);
+          return;
+        } else {
+          console.log('User fetch failed with error response, redirecting to login');
+          router.push('/login');
         }
       } catch (err) {
-        console.error('Failed to fetch user', err);
+        if (retryCount < 3) {
+          console.log(`Retrying user fetch due to network error (${retryCount + 1}/3)...`);
+          setTimeout(() => fetchUser(retryCount + 1), 500);
+          return;
+        }
+        console.error('Failed to fetch user after all retries', err);
+        router.push('/login');
       }
     };
     const fetchPrompts = async () => {

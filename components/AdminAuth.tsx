@@ -73,8 +73,8 @@ export default function AdminAuth({ children }: AdminAuthProps) {
 
       if (res.ok) {
         if (data.user && data.user.role === 'ADMIN') {
-          // Redirect immediately to prevent refresh loop
-          window.location.href = '/admin';
+          // Set authenticated state and let component re-render
+          setIsAuthenticated(true);
         } else {
           setError('Access denied. Admin role required.');
         }
