@@ -11,8 +11,8 @@ export async function POST() {
     maxAge: 0,
     path: '/',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Only secure in production
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for production, 'lax' for development
+    secure: true,
+    sameSite: 'none',
   });
 
   return response;

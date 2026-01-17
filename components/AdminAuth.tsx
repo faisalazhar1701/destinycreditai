@@ -81,11 +81,6 @@ export default function AdminAuth({ children }: AdminAuthProps) {
       } else {
         setError(data.error || 'Invalid credentials');
       }
-      
-      // After successful login, redirect to admin panel
-      if (res.ok && data.user && data.user.role === 'ADMIN') {
-        window.location.assign('/admin');
-      }
     } catch (err) {
       setError('Connection error. Please try again.');
     } finally {
@@ -94,16 +89,10 @@ export default function AdminAuth({ children }: AdminAuthProps) {
   };
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Logout API call failed:', error);
-    } finally {
-      setIsAuthenticated(false);
-      setCredentials({ email: '', password: '' });
-      // Use window.location.assign for reliable redirect after logout
-      window.location.assign('/login');
-    }
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setIsAuthenticated(false);
+    setCredentials({ email: '', password: '' });
+    router.push('/login');
   };
 
   // Show loading state while checking auth

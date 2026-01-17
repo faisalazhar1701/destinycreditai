@@ -64,8 +64,8 @@ export default function SetPasswordContent() {
             setTimeout(() => {
                 // Set disclaimer as accepted in localStorage
                 localStorage.setItem('disclaimerAccepted', 'true');
-                // Use window.location.assign for reliable redirect after password setup
-                window.location.assign('/dashboard');
+                // Redirect to dashboard instead of login
+                router.push('/dashboard');
             }, 2000);
         } catch (err: any) {
             console.error('Set password error:', err);

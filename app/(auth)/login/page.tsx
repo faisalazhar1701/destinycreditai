@@ -41,16 +41,33 @@ export default function LoginPage() {
 
             console.log('✅ Login successful! Redirecting to:', data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
             
-            // Clear loading state first
-            setLoading(false);
+            // Use Next.js router for client-side navigation instead of full page reload
+            // This preserves auth state and avoids cookie timing issues
+            // Add a timeout to clear loading state in case navigation is blocked by middleware
+            // This prevents the stuck "Signing in..." state
+            const timeoutId = setTimeout(() => {
+                setLoading(false);
+            }, 2000); // 2 seconds timeout
             
-            // Use window.location.assign for reliable redirect that ensures cookie is picked up by middleware
-            // This is more reliable than router.push() for authentication redirects
-            if (data.user.role === 'ADMIN') {
-                window.location.assign('/admin');
-            } else {
-                window.location.assign('/dashboard');
-            }
+            // Add a small delay to ensure cookie is set before navigation
+            // This addresses the timing issue between cookie setting and middleware check
+            setTimeout(() => {
+                try {
+                    if (data.user.role === 'ADMIN') {
+                        router.push('/admin');
+                    } else {
+                        router.push('/dashboard');
+                    }
+                    
+                    // Clear the timeout if navigation succeeds
+                    clearTimeout(timeoutId);
+                } catch (navigationError) {
+                    console.error('Navigation failed:', navigationError);
+                    setError('Navigation error. Please try refreshing the page.');
+                    clearTimeout(timeoutId);
+                    setLoading(false);
+                }
+            }, 100); // Small delay to ensure cookie propagation
         } catch (err: any) {
             console.error('❌ Login error:', err);
             setError(err.message);

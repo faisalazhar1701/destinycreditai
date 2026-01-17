@@ -673,57 +673,34 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
   };
 
   useEffect(() => {
-    // First, verify user is authenticated
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (!res.ok) {
-          router.push('/login');
-          return;
-        }
-        const data = await res.json();
-        if (!data.user) {
-          router.push('/login');
-          return;
-        }
-      } catch (error) {
-        console.error('Auth check failed, redirecting to login:', error);
-        router.push('/login');
-        return;
-      }
-        
-      // If authenticated, check disclaimer acceptance
-      const accepted = localStorage.getItem('disclaimerAccepted');
-      if (!accepted) {
-        router.push('/disclaimer');
-        return; // Early return to prevent further execution
-      } else {
-        setHasAccepted(true);
-          
-        // Only run other fetches if disclaimer is accepted
-        const fetchFollowUpLetters = async () => {
-          try {
-            const res = await fetch('/api/followup-letters');
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success) {
-                setFollowupLetters(data.data.map((l: any) => l.content));
-              }
-            }
-          } catch (err) {
-            console.error('Failed to fetch follow-ups', err);
-          }
-        };
-          
-        fetchWorkflows();      
-        fetchCreditLetters();
-        fetchFollowUpLetters();
-        fetchUploadedDocuments();
-        fetchResources();
-      }
-    };
+    const accepted = localStorage.getItem('disclaimerAccepted');
+    if (!accepted) {
+      router.push('/disclaimer');
+      return; // Early return to prevent further execution
+    } else {
+      setHasAccepted(true);
       
-    checkAuth();
+      // Only run other fetches if disclaimer is accepted
+      const fetchFollowUpLetters = async () => {
+        try {
+          const res = await fetch('/api/followup-letters');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              setFollowupLetters(data.data.map((l: any) => l.content));
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch follow-ups', err);
+        }
+      };
+      
+      fetchWorkflows();
+      fetchCreditLetters();
+      fetchFollowUpLetters();
+      fetchUploadedDocuments();
+      fetchResources();
+    }
   }, [router]);
 
   if (!hasAccepted) {
