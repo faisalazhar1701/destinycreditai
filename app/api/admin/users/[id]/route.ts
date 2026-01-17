@@ -33,9 +33,14 @@ export async function PUT(
     }
     
     const { id } = await params;
-    const { name, email, username, role, active, password } = await request.json();
+    const { name, email, username, role, active, password, subscription_status } = await request.json();
 
     const updateData: any = { name, email, username, role: role?.toUpperCase() as 'USER' | 'ADMIN', active };
+
+    // Add subscription_status to update data if provided
+    if (subscription_status !== undefined) {
+      updateData.subscription_status = subscription_status;
+    }
 
     if (password) {
       const bcrypt = require('bcryptjs');

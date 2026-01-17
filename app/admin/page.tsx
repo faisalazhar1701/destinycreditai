@@ -1304,19 +1304,18 @@ function EditForm({ type, data, users, onSave, onCancel }: any) {
           />
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email (not editable)"
             value={formData.email || ''}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full p-2 border rounded"
-            required
+            onChange={() => {}} // Make email non-editable
+            className="w-full p-2 border rounded bg-gray-100 cursor-not-allowed"
+            readOnly
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Password (leave blank to keep current)"
             value={formData.password || ''}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             className="w-full p-2 border rounded"
-            required={!formData.id}
           />
           <select
             value={formData.role || 'USER'}
@@ -1325,6 +1324,22 @@ function EditForm({ type, data, users, onSave, onCancel }: any) {
           >
             <option value="USER">User</option>
             <option value="ADMIN">Admin</option>
+          </select>
+          <select
+            value={formData.active !== undefined ? (formData.active ? 'true' : 'false') : 'true'}
+            onChange={(e) => setFormData({ ...formData, active: e.target.value === 'true' })}
+            className="w-full p-2 border rounded"
+          >
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+          <select
+            value={formData.subscription_status || 'ACTIVE'}
+            onChange={(e) => setFormData({ ...formData, subscription_status: e.target.value })}
+            className="w-full p-2 border rounded"
+          >
+            <option value="ACTIVE">Active</option>
+            <option value="UNSUBSCRIBED">Unsubscribed</option>
           </select>
         </>
       )}
