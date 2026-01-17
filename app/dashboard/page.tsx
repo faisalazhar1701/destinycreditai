@@ -63,7 +63,7 @@ export default function Dashboard() {
           } else if (retryCount < 3) {
             // Retry up to 3 times with small delays
             console.log(`Retrying user fetch (${retryCount + 1}/3)...`);
-            setTimeout(() => fetchUser(retryCount + 1), 200);
+            setTimeout(() => fetchUser(retryCount + 1), 500);
             return;
           } else {
             // After retries failed, redirect to login
@@ -73,7 +73,7 @@ export default function Dashboard() {
         } else if (retryCount < 3) {
           // Retry on non-OK responses
           console.log(`Retrying user fetch due to response error (${retryCount + 1}/3)...`);
-          setTimeout(() => fetchUser(retryCount + 1), 300);
+          setTimeout(() => fetchUser(retryCount + 1), 500);
           return;
         } else {
           console.log('User fetch failed with error response, redirecting to login');

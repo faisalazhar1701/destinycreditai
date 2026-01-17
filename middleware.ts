@@ -22,12 +22,14 @@ export function middleware(request: NextRequest) {
     const token = request.cookies.get('auth_token')?.value
 
     if (!token) {
+      console.log('No auth token found, redirecting to login');
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
     const payload = verifyToken(token)
 
     if (!payload?.userId) {
+      console.log('Invalid token, redirecting to login');
       return NextResponse.redirect(new URL('/login', request.url))
     }
   }

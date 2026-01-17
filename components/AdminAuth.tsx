@@ -37,13 +37,13 @@ export default function AdminAuth({ children }: AdminAuthProps) {
           // If not authenticated, wait a bit before retrying
           retries++;
           if (retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms before retry
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
           }
         } catch (err) {
           console.error('Auth check failed', err);
           retries++;
           if (retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms before retry
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
           }
         }
       }
