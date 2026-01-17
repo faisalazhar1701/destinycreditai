@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
                 name: updatedUser.name,
                 subscription_status: 'UNSUBSCRIBED'
             },
-            redirect_url: 'https://www.shakehandswithdestiny.org/destiny-credit-ai'
+            // redirect_url: 'https://www.shakehandswithdestiny.org/destiny-credit-ai'
         });
 
     } catch (error) {
