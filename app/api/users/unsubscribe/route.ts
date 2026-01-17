@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
@@ -23,18 +24,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify and decode token
-        let decoded: any;
-        try {
-            const jwt = await import('jsonwebtoken');
-            const jwtSecret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
-            if (!jwtSecret) {
-                return NextResponse.json(
-                    { error: 'Server configuration error' },
-                    { status: 500 }
-                );
-            }
-            decoded = jwt.verify(token, jwtSecret) as any;
-        } catch (error) {
+        const decoded = await verifyToken(token);
+        
+        if (!decoded) {
             return NextResponse.json(
                 { error: 'Invalid or expired token' },
                 { status: 401 }
@@ -52,7 +44,7 @@ export async function POST(request: NextRequest) {
         // Update user subscription status using raw query
         await prisma.$executeRaw`
             UPDATE "User" 
-            SET "subscription_status" = 'unsubscribed'::"SubscriptionStatus",
+            SET "subscription_status" = 'UNSUBSCRIBED'::"SubscriptionStatus",
                 "unsubscribed_at" = NOW()
             WHERE "id" = ${userId}
         `;
@@ -74,7 +66,7 @@ export async function POST(request: NextRequest) {
                 id: updatedUser.id,
                 email: updatedUser.email,
                 name: updatedUser.name,
-                subscription_status: 'unsubscribed'
+                subscription_status: 'UNSUBSCRIBED'
             }
         });
 
