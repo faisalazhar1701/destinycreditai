@@ -1300,7 +1300,6 @@ function EditForm({ type, data, users, onSave, onCancel }: any) {
             value={formData.username || ''}
             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
             className="w-full p-2 border rounded"
-            required
           />
           <input
             type="email"
