@@ -200,7 +200,7 @@ export async function POST(request: Request) {
           
           // Update subscription status using raw SQL to avoid client sync issues
           await tx.$executeRaw`
-            UPDATE "User" SET "subscription_status" = 'ACTIVE' WHERE "id" = ${user.id}
+            UPDATE "User" SET "subscription_status" = 'active' WHERE "id" = ${user.id}
           `;
           
           console.log('✅ Created new user with invite token:', email);

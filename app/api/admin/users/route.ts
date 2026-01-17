@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     
     // Update subscription status using raw SQL to avoid client sync issues
     await prisma.$executeRaw`
-      UPDATE "User" SET "subscription_status" = 'ACTIVE' WHERE "id" = ${user.id}
+      UPDATE "User" SET "subscription_status" = 'active' WHERE "id" = ${user.id}
     `;
 
     return NextResponse.json({ success: true, data: user });

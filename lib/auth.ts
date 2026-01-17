@@ -44,12 +44,12 @@ export function hasValidSubscription(user: any): boolean {
     }
     
     // For USER role, check subscription status
-    // Block only if subscription_status === 'UNSUBSCRIBED'
+    // Block only if subscription_status === 'unsubscribed'
     // New users or users without this field must NOT be blocked
     if (user.role === 'USER') {
-        // If subscription_status is 'UNSUBSCRIBED', deny access
+        // If subscription_status is 'unsubscribed', deny access
         // Otherwise allow access (including if field doesn't exist or has other values)
-        return user.subscription_status !== 'UNSUBSCRIBED';
+        return user.subscription_status !== 'unsubscribed';
     }
     
     return false;
