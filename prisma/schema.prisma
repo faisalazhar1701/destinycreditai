@@ -135,6 +135,8 @@ enum Role {
 }
 
 enum SubscriptionStatus {
+  active
+  canceled
   ACTIVE
   UNSUBSCRIBED
 }
