@@ -105,6 +105,14 @@ export default function AdminPanel() {
   const [adminToDelete, setAdminToDelete] = useState<string | null>(null);
   const router = useRouter();
 
+  // Create a filtered version of users based on subscription filter
+  const filteredUsers = users.filter(user => {
+    if (subscriptionFilter === 'all') return true;
+    if (subscriptionFilter === 'ACTIVE') return user.subscription_status === 'ACTIVE';
+    if (subscriptionFilter === 'UNSUBSCRIBED') return user.subscription_status === 'UNSUBSCRIBED';
+    return true; // Default case
+  });
+
   useEffect(() => {
     fetchData();
   }, [activeSection]);
@@ -558,7 +566,7 @@ export default function AdminPanel() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((user) => (
+                      {filteredUsers.map((user) => (
                         <tr key={user.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
