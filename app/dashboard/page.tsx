@@ -727,15 +727,15 @@ EDUCATIONAL DISCLAIMER: This template is for educational purposes only. No legal
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </Link>
-            <a
+            {/* <a
               href={`mailto:info@shakehandswithdestiny.com?subject=Unsubscribe Request&body=User Email: ${user?.email || ''}%0D%0AUsername: ${user?.name || user?.username || 'N/A'}%0D%0A%0D%0AI would like to unsubscribe from this service.`}
               className="p-2 hover:bg-orange-50 text-orange-600 rounded-full transition-colors"
               title="Unsubscribe / Cancel Subscription"
-            >
+            > */}
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-            </a>
+            {/* </a> */}
             <button
               onClick={handleLogout}
               className="p-2 hover:bg-red-50 text-red-600 rounded-full transition-colors"
